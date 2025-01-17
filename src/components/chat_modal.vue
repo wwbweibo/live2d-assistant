@@ -31,22 +31,21 @@ export default {
   components: {
     ChatMessage
   },
+  props: {
+    assistantSettings: {
+      type: Object,
+      required: true
+    }
+  },
   data() {
     return {
-      messages: [
-        {
-          id: 1,
-          username: "Senko",
-          message: "你好，我是Senko，有什么可以帮助你的吗？",
-          timestamp: new Date().toLocaleString()
-        }
-      ],
-      "assistant_name": "Senko",
-      "model": "qwen2.5",
-      "ollama_host": "http://localhost:11434",
+      messages: [],
+      "assistant_name": this.assistantSettings.name,
+      "model": this.assistantSettings.model,
+      "ollama_host": this.assistantSettings.ollamaHost,
       "system_message": {
         "role": "system",
-        "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯。"
+        "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯。现在，打个招呼吧！"
       }
     }
   },
@@ -67,20 +66,21 @@ export default {
                     content: msg.message
                 }))
             // 清空输入框
-            this.inputMessage = ''  
-            // 在chat_history中添加系统消息
-            let sys_msg = this.system_message
-            sys_msg.content = sys_msg.content.replace("{{assistant_name}}", this.assistant_name)
-            chat_history.unshift(sys_msg)
+            this.inputMessage = ''
+            chat_history.unshift(this.system_message)
             // 请求ollama的chat接口进行回复
-            fetch(this.ollama_host + '/api/chat', {
+            this.sendMessageToOllama(chat_history)
+        }
+    },
+    sendMessageToOllama(messages) {
+      fetch(this.ollama_host + '/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: this.model,
-                messages: chat_history,
+                messages: messages,
                 stream: false
             })
             })
@@ -89,7 +89,7 @@ export default {
                 if (data.message.content) {
                 this.messages.push({
                     id: this.messages.length + 1,
-                    username: "Senko",
+                    username: this.assistant_name,
                     message: data.message.content,
                     timestamp: new Date().toLocaleString()
                 })
@@ -98,8 +98,14 @@ export default {
             .catch(error => {
                 console.error('Error:', error)
             })
-        }
     }
+  },
+  mounted() {
+    this.assistant_name = this.assistantSettings.name
+    this.model = this.assistantSettings.model
+    this.ollama_host = this.assistantSettings.ollamaHost
+    this.system_message.content = this.system_message.content.replace("{{assistant_name}}", this.assistant_name)
+    this.sendMessageToOllama([this.system_message])
   }
 }
 </script>

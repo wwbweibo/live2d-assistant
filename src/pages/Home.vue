@@ -1,7 +1,6 @@
 <template>
   <div class="home">
     <canvas ref="live2dCanvas"></canvas>
-    
     <!-- 设置按钮 -->
     <div v-if="!showSettings && !showChat">
       <div class="settings-button" @click="showSettings = true">
@@ -15,87 +14,15 @@
     </div>
     <!-- 设置弹窗 -->
     <div class="settings-modal" v-if="showSettings">
-      <!-- <div class="settings-content">
-        <h3>模型设置</h3>
-        
-        <div class="setting-item">
-          <label>模型路径：</label>
-          <input v-model="settings.modelPath" type="text" @change="updateModel">
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-header">
-            <label>横向偏移：</label>
-            <button class="reset-button" @click="resetOffset('x')">重置</button>
-          </div>
-          <div class="setting-control">
-            <input 
-              v-model="settings.offsetX" 
-              type="range" 
-              min="-100" 
-              max="100" 
-              @input="updatePosition"
-            >
-            <span>{{ settings.offsetX }}%</span>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-header">
-            <label>纵向偏移：</label>
-            <button class="reset-button" @click="resetOffset('y')">重置</button>
-          </div>
-          <div class="setting-control">
-            <input 
-              v-model="settings.offsetY" 
-              type="range" 
-              min="-100" 
-              max="100" 
-              @input="updatePosition"
-            >
-            <span>{{ settings.offsetY }}%</span>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-header">
-            <label>缩放比例：</label>
-            <button class="reset-button" @click="resetScale">重置</button>
-          </div>
-          <div class="setting-control">
-            <input 
-              v-model="settings.scale" 
-              type="range" 
-              min="0.1" 
-              max="2" 
-              step="0.1" 
-              @input="updateScale"
-            >
-            <span>{{ settings.scale }}x</span>
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <label>背景图片：</label>
-          <div class="setting-control">
-            <input 
-              v-model="settings.backgroundPath" 
-              type="text" 
-              @change="updateBackground"
-            >
-            <button class="reset-button" @click="resetBackground">重置</button>
-          </div>
-        </div>
-
-        <div class="button-group">
-          <button class="save-button" @click="saveSettings">保存设置</button>
-          <button class="close-button" @click="showSettings = false">关闭</button>
-        </div>
-      </div> -->
-      <SettingModel :onModelSettingChange="onModelSettingChange" :onAssistantSettingChange="onAssistantSettingChange" />
+      <SettingModal 
+        :modelSettings="modelSettings"
+        :assistantSettings="assistantSettings"
+        @updateModelSettings="handleModelSettingsUpdate"
+        @updateAssistantSettings="handleAssistantSettingsUpdate"
+      />
       <div class="button-group">
-          <button class="save-button" @click="saveSettings">保存设置</button>
-          <button class="close-button" @click="showSettings = false">关闭</button>
+        <button class="save-button" @click="saveSettings">保存设置</button>
+        <button class="close-button" @click="showSettings = false">关闭</button>
       </div>
     </div>
     <!-- 聊天弹窗 -->
@@ -103,7 +30,7 @@
       <div class="chat-header">
         <button class="close-button" @click="showChat = false">关闭</button>
       </div>
-      <ChatModal />
+      <ChatModal :assistantSettings="assistantSettings" />
     </div>
   </div>
 </template>
@@ -114,7 +41,7 @@ import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4 } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
 import ChatModal from '../components/chat_modal.vue'
-import SettingModel from '../components/setting_modal.vue'
+import SettingModal from '../components/setting_modal.vue'
 
 // 注册 Ticker
 Live2DModelCubism4.registerTicker(PIXI.Ticker)
@@ -124,12 +51,12 @@ const live2dCanvas = ref<HTMLCanvasElement | null>(null)
 let app: PIXI.Application | null = null
 let model: any = null
 
-
 const showSettings = ref(false)
 const showChat = ref(false)
 const STORAGE_KEY = 'live2d-viewer-settings'
 
-const settings = reactive({
+// 模型设置
+const modelSettings = reactive({
   modelPath: 'assets/models/Senko_Normals/senko.model3.json',
   offsetX: 0,
   offsetY: 0,
@@ -137,30 +64,28 @@ const settings = reactive({
   backgroundPath: 'assets/background.jpg'
 })
 
+// 助手设置
+const assistantSettings = reactive({
+  name: 'Senko',
+  model: 'qwen2.5',
+  ollamaHost: 'http://localhost:11434'
+})
+
+// 默认设置
 const defaultSettings = {
+  modelPath: 'assets/models/Senko_Normals/senko.model3.json',
   offsetX: 0,
   offsetY: 0,
   scale: 0.5,
   backgroundPath: 'assets/background.jpg'
 }
 
-const resetOffset = (axis: 'x' | 'y') => {
-  if (axis === 'x') {
-    settings.offsetX = defaultSettings.offsetX
-  } else {
-    settings.offsetY = defaultSettings.offsetY
-  }
-  updatePosition()
-}
-
-const resetScale = () => {
-  settings.scale = defaultSettings.scale
-  updateScale()
-}
-
 // 保存设置到 localStorage
 const saveSettings = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    modelSettings,
+    assistantSettings
+  }))
 }
 
 // 从 localStorage 加载设置
@@ -168,127 +93,77 @@ const loadSettings = () => {
   const savedSettings = localStorage.getItem(STORAGE_KEY)
   if (savedSettings) {
     const parsed = JSON.parse(savedSettings)
-    settings.modelPath = parsed.modelPath
-    settings.offsetX = parsed.offsetX
-    settings.offsetY = parsed.offsetY
-    settings.scale = parsed.scale
+    Object.assign(modelSettings, parsed.modelSettings)
+    Object.assign(assistantSettings, parsed.assistantSettings)
   }
 }
 
-// 添加重置背景的方法
-const resetBackground = () => {
-  settings.backgroundPath = defaultSettings.backgroundPath
+// 处理模型设置更新
+const handleModelSettingsUpdate = (newSettings: any) => {
+  // 检查是否改变了模型路径
+  const modelPathChanged = modelSettings.modelPath !== newSettings.modelPath
+  
+  // 更新设置
+  Object.assign(modelSettings, newSettings)
+  
+  // 如果模型路径改变，需要重新加载模型
+  if (modelPathChanged) {
+    updateModel()
+  } else {
+    // 否则只更新现有模型的参数
+    updatePosition()
+    updateScale()
+  }
+  
+  // 更新背景
   updateBackground()
 }
 
-const onModelSettingChange = (newSettings: any) => {
-  settings.modelPath = newSettings.modelPath
-  settings.offsetX = newSettings.offsetX
-  settings.offsetY = newSettings.offsetY
-  settings.scale = newSettings.scale
-  updateModel()
-  updatePosition()
-  updateScale()
+// 处理助手设置更新
+const handleAssistantSettingsUpdate = (newSettings: any) => {
+  Object.assign(assistantSettings, newSettings)
 }
 
-const onAssistantSettingChange = (newSettings: any) => {
-  // Implement the logic for assistant setting change
-  console.log('Assistant settings changed:', newSettings)
-}
-
-onMounted(async () => {
-  // 先加载保存的设置
-  loadSettings()
-  // 初始化背景
-  updateBackground()
-  console.log("Settings loaded:", settings)
-  if (!live2dCanvas.value) {
-    console.error('Canvas element not found!')
-    return
-  }
-  app = new PIXI.Application({
-    view: live2dCanvas.value,
-    transparent: true,
-    autoStart: true,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    backgroundAlpha: 0,
-  })
-  console.log("init app:", app);
-  try {
-    const modelSettings = {
-      motionPreload: "none",
-      autoInteract: false,
-      autoUpdate: true
-    }
-
-    // 添加调试信息
-    console.log('Loading model from:', settings.modelPath)
-    console.log('PIXI Application created:', app)
-    console.log('Live2D Core loaded:', window.Live2DCubismCore)
-    console.log('Live2D Model class:', Live2DModelCubism4)
-
-    // 使用保存的模型路径
-    const isModel3 = settings.modelPath.endsWith('.model3.json')
-    const ModelClass = isModel3 ? Live2DModelCubism4 : Live2DModelCubism2
-
-    model = await ModelClass.from(settings.modelPath, modelSettings)
-    
-    if (app && model) {
-      console.log('Model loaded successfully:', model)
-      app.stage.addChild(model)
-      
-      // 设置锚点
-      model.anchor.set(0.5, 1.0)
-      
-      // 应用保存的设置
-      updateScale()
-      updatePosition()
-      
-      // 使舞台可交互
-      app.stage.interactive = true
-    }
-  } catch (error) {
-    console.error('模型加载失败:', error)
-  }
-})
-
-onUnmounted(() => {
-  if (app) {
-    app.destroy(true)
-  }
-})
-
+// 更新模型位置
 const updatePosition = () => {
   if (model && app) {
-    // 将百分比转换为实际像素
-    const xOffset = (app.renderer.width * Number(settings.offsetX)) / 100
-    const yOffset = (app.renderer.height * Number(settings.offsetY)) / 100
-    
+    const xOffset = (app.renderer.width * Number(modelSettings.offsetX)) / 100
+    const yOffset = (app.renderer.height * Number(modelSettings.offsetY)) / 100
     model.x = app.renderer.width / 2 + xOffset
     model.y = app.renderer.height * 2 + yOffset
   }
 }
 
+// 更新模型缩放
 const updateScale = () => {
   if (model) {
-    model.scale.set(Number(settings.scale))
+    model.scale.set(Number(modelSettings.scale))
   }
 }
 
+// 更新背景
+const updateBackground = () => {
+  const homeElement = document.querySelector('.home') as HTMLElement
+  if (homeElement) {
+    homeElement.style.backgroundImage = `url('${modelSettings.backgroundPath}')`
+  }
+}
+
+// 更新模型
 const updateModel = async () => {
   if (!app) return
   
   try {
+    // 如果存在旧模型，先移除
     if (model) {
       app.stage.removeChild(model)
+      model.destroy()
     }
     
-    // 根据文件扩展名选择合适的模型加载器
-    const isModel3 = settings.modelPath.endsWith('.model3.json')
+    const isModel3 = modelSettings.modelPath.endsWith('.model3.json')
     const ModelClass = isModel3 ? Live2DModelCubism4 : Live2DModelCubism2
     
-    model = await ModelClass.from(settings.modelPath, {
+    model = await ModelClass.from(modelSettings.modelPath, {
       motionPreload: "none",
       autoInteract: false,
       autoUpdate: true
@@ -305,12 +180,32 @@ const updateModel = async () => {
   }
 }
 
-const updateBackground = () => {
-  const homeElement = document.querySelector('.home') as HTMLElement
-  if (homeElement) {
-    homeElement.style.backgroundImage = `url('${settings.backgroundPath}')`
+onMounted(async () => {
+  loadSettings()
+  updateBackground()
+
+  if (!live2dCanvas.value) {
+    console.error('Canvas element not found!')
+    return
   }
-}
+
+  app = new PIXI.Application({
+    view: live2dCanvas.value,
+    transparent: true,
+    autoStart: true,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundAlpha: 0,
+  })
+
+  await updateModel()
+})
+
+onUnmounted(() => {
+  if (app) {
+    app.destroy(true)
+  }
+})
 </script>
 
 <style scoped>
