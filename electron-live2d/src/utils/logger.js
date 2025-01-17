@@ -6,22 +6,7 @@ class Logger {
   constructor() {
     // 获取应用数据目录
     let userDataPath;
-    
-    if (isMainThread) {
-      try {
-        // 尝试获取 electron 应用数据目录
-        const electron = require('electron');
-        const app = electron.app || (electron.remote && electron.remote.app);
-        userDataPath = app ? app.getPath('userData') : process.cwd();
-      } catch (error) {
-        // 如果失败，使用可执行文件所在目录
-        userDataPath = process.cwd();
-      }
-    } else {
-      // Worker 线程使用当前工作目录
-      userDataPath = process.cwd();
-    }
-
+    userDataPath = process.cwd();
     this.logDir = path.join(userDataPath, 'logs');
     this.logFile = path.join(this.logDir, `app-${new Date().toISOString().split('T')[0]}.log`);
     
@@ -29,9 +14,9 @@ class Logger {
       // 确保日志目录存在
       fs.ensureDirSync(this.logDir);
       // 写入 UTF-8 BOM
-      if (!fs.existsSync(this.logFile)) {
-        fs.writeFileSync(this.logFile, '\ufeff', { encoding: 'utf8' });
-      }
+      // if (!fs.existsSync(this.logFile)) {
+      //   fs.writeFileSync(this.logFile, '\ufeff', { encoding: 'utf8' });
+      // }
     } catch (error) {
       console.error('无法创建日志目录:', error);
     }

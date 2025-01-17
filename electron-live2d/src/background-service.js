@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs-extra');
+const logger = require('./utils/logger');
 
 // 设置环境变量
 if (process.platform === 'win32') {
@@ -13,16 +14,16 @@ if (process.platform === 'win32') {
 
 if (!isMainThread) {
   process.on('uncaughtException', (error) => {
-    console.error('未捕获的异常:', error);
+    logger.error('未捕获的异常:', error);
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason) => {
-    console.error('未处理的 Promise 拒绝:', reason);
+    logger.error('未处理的 Promise 拒绝:', reason.message);
     process.exit(1);
   });
 
-  console.log('后台服务已启动');
+  logger.info('后台服务已启动');
   
   function startServer() {
     try {
@@ -43,18 +44,18 @@ if (!isMainThread) {
 
       // 验证路径是否存在
       if (!fs.existsSync(wwwPath)) {
-        console.error('静态文件目录不存在:', wwwPath);
+        logger.error('静态文件目录不存在:', wwwPath);
         throw new Error(`静态文件目录不存在: ${wwwPath}`);
       }
 
       // 验证 index.html 是否存在
       const indexPath = path.join(wwwPath, 'index.html');
       if (!fs.existsSync(indexPath)) {
-        console.error('index.html 不存在:', indexPath);
+        logger.error('index.html 不存在:', indexPath);
         throw new Error(`index.html 不存在: ${indexPath}`);
       }
 
-      console.log('静态文件路径:', wwwPath);
+      logger.info('静态文件路径:', wwwPath);
       
       // 设置静态文件中间件
       app.use(express.static(wwwPath));
@@ -79,23 +80,23 @@ if (!isMainThread) {
           wwwPath: wwwPath,
           indexPath: indexPath
         };
-        console.log(message.data);
+        logger.info(message.data);
         parentPort.postMessage(message);
       });
 
       server.on('error', (error) => {
-        console.error('服务器错误:', error);
+        logger.error('服务器错误:', error.message);
         process.exit(1);
       });
 
       // 添加错误处理中间件
       app.use((err, req, res, next) => {
-        console.error('Express 错误:', err);
+        logger.error('Express 错误:', err.message);
         res.status(500).send('服务器错误');
       });
 
     } catch (error) {
-      console.error('启动服务器时出错:', error);
+      logger.error('启动服务器时出错:', error.message);
       process.exit(1);
     }
   }
@@ -108,7 +109,7 @@ if (!isMainThread) {
         type: 'status',
         data: '后台服务正在运行'
       };
-      console.log(message.data);
+      // logger.info(message.data);
       parentPort.postMessage(message);
     }, 5000);
   }

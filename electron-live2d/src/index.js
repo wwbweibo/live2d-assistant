@@ -3,6 +3,7 @@ const { Worker } = require('worker_threads');
 const path = require('path');
 const fetch = require('node-fetch');
 const logger = require('./utils/logger');
+const screen = require('electron').screen;
 
 if (process.platform === 'win32') {
   process.env.LANG = 'zh_CN.UTF-8';
@@ -20,7 +21,7 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('主进程未处理的 Promise 拒绝:', reason);
+  logger.error('主进程未处理的 Promise 拒绝:', reason.message);
 });
 
 function createWindow() {
@@ -32,9 +33,13 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: false
     },
+    // 窗口应该在右下角展示, 并且窗口的宽高应该为1024x768, 则窗口的x,y应该为屏幕的宽度和高度减去窗口的宽度和高度
+    x: screen.width - 1024,
+    y: screen.height - 768,
     transparent: true,
-    frame: false,
+    frame: true,
     alwaysOnTop: true
+    
   });
 
   mainWindow.webContents.on('crashed', () => {
@@ -89,12 +94,12 @@ function createWindow() {
 function createBackgroundService() {
   const worker = new Worker(path.join(__dirname, 'background-service.js'));
   
-  worker.on('message', (message) => {
-    logger.info('收到后台服务消息:', message);
-  });
+  // worker.on('message', (message) => {
+  //   logger.info('收到后台服务消息:', message);
+  // });
 
   worker.on('error', (error) => {
-    logger.error('后台服务错误:', error);
+    logger.error('后台服务错误:', error.message);
   });
 
   worker.on('exit', (code) => {
