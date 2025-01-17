@@ -105,7 +105,6 @@ export default {
 .settings-section {
   background: #f8f9fa;
   border-radius: 8px;
-  padding: 20px;
 }
 
 .setting-item {

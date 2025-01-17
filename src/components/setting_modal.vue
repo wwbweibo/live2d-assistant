@@ -90,7 +90,6 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 20px;
 }
 
 .settings-header {
@@ -131,9 +130,6 @@ export default {
 }
 
 .settings-content {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 10px;
 }
 
 .tab-content {

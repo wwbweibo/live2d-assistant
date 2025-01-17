@@ -14,16 +14,16 @@
     </div>
     <!-- 设置弹窗 -->
     <div class="settings-modal" v-if="showSettings">
+      <div class="button-group">
+        <button class="save-button" @click="saveSettings">保存设置</button>
+        <button class="close-button" @click="showSettings = false">关闭</button>
+      </div>
       <SettingModal 
         :modelSettings="modelSettings"
         :assistantSettings="assistantSettings"
         @updateModelSettings="handleModelSettingsUpdate"
         @updateAssistantSettings="handleAssistantSettingsUpdate"
       />
-      <div class="button-group">
-        <button class="save-button" @click="saveSettings">保存设置</button>
-        <button class="close-button" @click="showSettings = false">关闭</button>
-      </div>
     </div>
     <!-- 聊天弹窗 -->
     <div class="chat-modal" v-if="showChat">
@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus'
 import { ref, onMounted, onUnmounted, reactive } from 'vue'
 import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4 } from 'pixi-live2d-display/cubism4'
@@ -86,6 +87,8 @@ const saveSettings = () => {
     modelSettings,
     assistantSettings
   }))
+  // 提示保存成功
+  ElMessage.success('设置已保存')
 }
 
 // 从 localStorage 加载设置
