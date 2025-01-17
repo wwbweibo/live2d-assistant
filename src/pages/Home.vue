@@ -15,7 +15,7 @@
     </div>
     <!-- 设置弹窗 -->
     <div class="settings-modal" v-if="showSettings">
-      <div class="settings-content">
+      <!-- <div class="settings-content">
         <h3>模型设置</h3>
         
         <div class="setting-item">
@@ -91,6 +91,11 @@
           <button class="save-button" @click="saveSettings">保存设置</button>
           <button class="close-button" @click="showSettings = false">关闭</button>
         </div>
+      </div> -->
+      <SettingModel :onModelSettingChange="onModelSettingChange" :onAssistantSettingChange="onAssistantSettingChange" />
+      <div class="button-group">
+          <button class="save-button" @click="saveSettings">保存设置</button>
+          <button class="close-button" @click="showSettings = false">关闭</button>
       </div>
     </div>
     <!-- 聊天弹窗 -->
@@ -109,8 +114,8 @@ import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4 } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
 import ChatModal from '../components/chat_modal.vue'
+import SettingModel from '../components/setting_modal.vue'
 
-import { time } from 'console'
 // 注册 Ticker
 Live2DModelCubism4.registerTicker(PIXI.Ticker)
 Live2DModelCubism2.registerTicker(PIXI.Ticker)
@@ -174,6 +179,21 @@ const loadSettings = () => {
 const resetBackground = () => {
   settings.backgroundPath = defaultSettings.backgroundPath
   updateBackground()
+}
+
+const onModelSettingChange = (newSettings: any) => {
+  settings.modelPath = newSettings.modelPath
+  settings.offsetX = newSettings.offsetX
+  settings.offsetY = newSettings.offsetY
+  settings.scale = newSettings.scale
+  updateModel()
+  updatePosition()
+  updateScale()
+}
+
+const onAssistantSettingChange = (newSettings: any) => {
+  // Implement the logic for assistant setting change
+  console.log('Assistant settings changed:', newSettings)
 }
 
 onMounted(async () => {
@@ -361,31 +381,6 @@ canvas {
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.settings-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-top: 60px;
-}
-
-.setting-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.setting-item label {
-  font-size: 14px;
-  color: #666;
-}
-
-.setting-item input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
 
 .close-button {
   margin-top: auto;
@@ -401,40 +396,7 @@ canvas {
   background: #3aa876;
 }
 
-.setting-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 
-.setting-control {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.setting-control input[type="range"] {
-  flex: 1;
-}
-
-.setting-control span {
-  min-width: 45px;
-  text-align: right;
-}
-
-.reset-button {
-  padding: 4px 8px;
-  font-size: 12px;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #666;
-}
-
-.reset-button:hover {
-  background: #e0e0e0;
-}
 
 .button-group {
   display: flex;

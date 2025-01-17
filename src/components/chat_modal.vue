@@ -1,26 +1,30 @@
 <template>
-    <div class="chat-content" ref="chatContent">
-        <h3>聊天</h3>
-        <div class="chat-messages">
-            <el-scrollbar wrap-class="scrollbar-wrapper">
-                <ChatMessage
-                    v-for="message in messages"
-                    :key="message.id"
-                    :username="message.username"
-                    :message="message.message"
-                    :timestamp="message.timestamp"
-                />
-            </el-scrollbar>
-        </div>
-        <div class="chat-input">
-            <textarea class="chat-input-text" rows="10" placeholder="输入消息" @keydown.enter="sendMessage" ></textarea>
-            <button class="chat-input-button" @click="sendMessage">发送</button>
-        </div>
+  <div class="chat-container">
+    <div class="chat-messages">
+      <ChatMessage  
+        v-for="message in messages"
+        :key="message.id"
+        :username="message.username"
+        :message="message.message"
+        :timestamp="message.timestamp"
+      />
     </div>
+    
+    <div class="chat-input">
+      <textarea 
+        v-model="inputMessage" 
+        class="chat-input-text"
+        @keyup.enter.ctrl="sendMessage"
+        placeholder="输入消息，按 Ctrl + Enter 发送"
+      ></textarea>
+      <button class="chat-input-button" @click="sendMessage">发送</button>
+    </div>
+  </div>
 </template>
 
 <script>
 import ChatMessage from './chat_message.vue';
+import { ElScrollbar } from 'element-plus';
 
 export default {
   name: 'ChatModal',
@@ -58,11 +62,12 @@ export default {
                 message,
                 timestamp: new Date().toLocaleString()
             })
-            input.value = ''
             let chat_history = this.messages.map(msg => ({
                     role: msg.username === 'You' ? 'user' : 'assistant',
                     content: msg.message
                 }))
+            // 清空输入框
+            this.inputMessage = ''  
             // 在chat_history中添加系统消息
             let sys_msg = this.system_message
             sys_msg.content = sys_msg.content.replace("{{assistant_name}}", this.assistant_name)
@@ -100,58 +105,90 @@ export default {
 </script>
 
 <style scoped>
-.chat-content {
-  height: 100%;
+.chat-container {
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 60px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.chat-messages {
+  overflow-y: auto;
+  margin-bottom: 20px;
+  height: calc(100% - 140px);
+}
+
+.message {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.user-message {
+  background-color: #e3f2fd;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.assistant-message {
+  background-color: #f5f5f5;
+  margin-right: auto;
+  margin-left: 0;
 }
 
 .chat-input {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
-  width: -webkit-fill-available;
-  padding-right: 10px;
-  font-family: '微软雅黑', sans-serif;
-  flex-direction: row;
-  height: 200px;
 }
 
 .chat-input-text {
   flex: 1;
-  padding: 8px;
+  padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   resize: none;
-  height: 100px;
-  font-size: 20px;
-  font-family: '微软雅黑', Arial, sans-serif;
+  height: 80px;
+  font-size: 14px;
 }
 
 .chat-input-button {
-  padding: 8px 16px;
+  padding: 0 20px;
+  height: 80px;
   background: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  height: 100px;
-  width: 80px;
+  font-size: 14px;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
-  white-space: nowrap;
 }
 
 .chat-input-button:hover {
   background: #45a049;
 }
 
-.chat-messages {
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 200px);
+/* 自定义滚动条样式 */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>
