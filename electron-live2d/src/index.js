@@ -1,9 +1,11 @@
 const { app, BrowserWindow } = require('electron');
-const { Worker } = require('worker_threads');
+const { spawn } = require('child_process');
 const path = require('path');
 const fetch = require('node-fetch');
 const logger = require('./utils/logger');
 const screen = require('electron').screen;
+const fs = require('fs');
+const config = require('./config');
 
 if (process.platform === 'win32') {
   process.env.LANG = 'zh_CN.UTF-8';
@@ -24,7 +26,13 @@ process.on('unhandledRejection', (reason) => {
   logger.error('主进程未处理的 Promise 拒绝:', reason.message);
 });
 
-function createWindow() {
+// 在创建窗口前加载配置
+const appConfig = config.getConfig();
+if (!appConfig) {
+  console.error('配置加载失败，使用默认配置');
+}
+
+function createWindow(config) {
   const mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
@@ -33,15 +41,11 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: false
     },
-    // 窗口应该在右下角展示, 并且窗口的宽高应该为1024x768, 则窗口的x,y应该为屏幕的宽度和高度减去窗口的宽度和高度
-    x: screen.width - 1024,
-    y: screen.height - 768,
     transparent: true,
-    frame: true,
-    alwaysOnTop: true
-    
+    alwaysOnTop: true,
+    frame: false,
   });
-
+  mainWindow.loadURL(`http://${config.server.host}:${config.server.port}/`);
   mainWindow.webContents.on('crashed', () => {
     logger.error('窗口崩溃');
   });
@@ -58,63 +62,82 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     logger.info('页面加载完成');
   });
-
-  let retryCount = 0;
-  const maxRetries = 10;
-
-  const waitForServer = async () => {
-    try {
-      logger.info('尝试连接服务器...');
-      const response = await fetch('http://localhost:3000/health');
-      const health = await response.json();
-      
-      if (health.status === 'OK' && health.indexExists) {
-        const url = 'http://localhost:3000';
-        logger.info('加载URL:', url);
-        await mainWindow.loadURL(url);
-        logger.info('成功连接到服务器');
-      } else {
-        throw new Error('健康检查失败或index.html不存在');
-      }
-    } catch (err) {
-      retryCount++;
-      logger.error('无法连接到服务器，请检查服务器是否正常启动', err.message);
-      if (retryCount < maxRetries) {
-        logger.warn(`等待服务器启动，重试次数: ${retryCount}`);
-        setTimeout(waitForServer, 1000);
-      } else {
-        logger.error('无法连接到服务器，请检查服务器是否正常启动', err.message);
-      }
-    }
-  };
-
-  waitForServer();
 }
 
-function createBackgroundService() {
-  const worker = new Worker(path.join(__dirname, 'background-service.js'));
-  
-  // worker.on('message', (message) => {
-  //   logger.info('收到后台服务消息:', message);
-  // });
-
-  worker.on('error', (error) => {
+function createBackgroundService(config) {
+  const execCommand = [
+    config.server.serverPath,
+    "--static_path", config.server.staticPath,
+    "--model_path", config.server.cosyvoiceModelPath,
+    "--prompt_path", config.server.cosyvoicePromptPath,
+    "--prompt_text", config.server.cosyvoicePromptText,
+    "--sample_rate", config.server.cosyvoiceSampleRate,
+    "--host", config.server.host,
+    "--port", config.server.port,
+    "--ollama_host", config.server.ollamaHost,
+  ] 
+  const cmd = execCommand.join(" ")
+  logger.info('cmd:', config.server.pythonExec, cmd)
+  var subprocess = require('child_process').spawn(config.server.pythonExec, execCommand, {
+    cwd: "D:\\cosyvoice\\CosyVoice"
+  })
+  subprocess.stdout.on('data', (data) => {
+    logger.info(data.toString());
+  });
+  subprocess.stderr.on('data', (data) => {
+    logger.error(data.toString());
+  });
+  subprocess.on('error', (error) => {
     logger.error('后台服务错误:', error.message);
   });
-
-  worker.on('exit', (code) => {
+  subprocess.on('exit', (code) => {
     if (code !== 0) {
       logger.error(`后台服务异常退出，退出码: ${code}`);
     }
   });
+  return subprocess;
+}
 
-  return worker;
+async function waitForServer(config) {
+  let retryCount = 0;
+  const maxRetries = 100;
+  try{
+    logger.info('尝试连接服务器...');
+    const response = await fetch(`http://${config.server.host}:${config.server.port}/health`);
+    const health = await response.json();
+    logger.info('health:', health)
+    logger.info('health.status === OK:', health.status === 'OK')
+    logger.info('health.indexExists === true:', health.indexExists)
+    if (health.status === 'OK' && health.indexExists) {
+      logger.info('成功连接到服务器');
+      createWindow(config);
+      return true;
+    } else {
+      throw new Error('健康检查失败或index.html不存在');
+    }
+  } catch (err) {
+    retryCount++;
+    logger.error('连接服务器失败', err.message);
+    if (retryCount < maxRetries) {
+      logger.warn(`等待服务器启动，重试次数: ${retryCount}`);
+      setTimeout(() => {
+        waitForServer(config);
+      }, 1000);
+    } else {
+      logger.error('无法连接到服务器，请检查服务器是否正常启动', err.message);
+    }
+  }
 }
 
 app.whenReady().then(() => {
-  logger.info('应用程序启动');
-  const backgroundService = createBackgroundService();
-  createWindow();
+  try {
+    logger.info('应用程序启动');
+    const backgroundService = createBackgroundService(appConfig);
+    waitForServer(appConfig);
+    // createWindow(appConfig);
+  } catch (error) {
+    logger.error('应用程序启动失败:', error.message);
+  }
 });
 
 app.on('window-all-closed', () => {

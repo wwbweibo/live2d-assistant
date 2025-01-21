@@ -73,7 +73,7 @@ export default {
         }
     },
     sendMessageToOllama(messages) {
-      fetch(this.ollama_host + '/api/chat', {
+      fetch(this.ollama_host + '/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -86,18 +86,42 @@ export default {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.message.content) {
-                this.messages.push({
-                    id: this.messages.length + 1,
-                    username: this.assistant_name,
-                    message: data.message.content,
-                    timestamp: new Date().toLocaleString()
-                })
+                if (data.message) {
+                  this.messages.push({
+                      id: this.messages.length + 1,
+                      username: this.assistant_name,
+                      message: data.message,
+                      timestamp: new Date().toLocaleString()
+                  })
+                }
+                if (data.wav_data) {
+                  this.playAudio(data.wav_data)
                 }
             })
             .catch(error => {
                 console.error('Error:', error)
             })
+    },
+    async playAudio(wav_data) {
+      for (let i = 0; i < wav_data.length; i ++) {
+        // base64解码
+        const binaryString = window.atob(wav_data[i]);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const audioContext = new AudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start();
+        // 等待音频播放完毕
+        await new Promise(resolve => {
+          source.onended = resolve;
+        });
+      }
     }
   },
   mounted() {
