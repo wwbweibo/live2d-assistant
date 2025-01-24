@@ -27,6 +27,14 @@
         @change="updateSettings"
       >
     </div>
+    <div class="setting-item">
+      <label>是否启用TTS：</label>
+      <input 
+        v-model="settings.ttsEnabled" 
+        type="checkbox" 
+        @change="updateSettings"
+      >
+    </div>
   </div>
 </template>
 
@@ -51,6 +59,7 @@ export default {
   },
   methods: {
     updateSettings() {
+      console.log(this.settings)
       this.onChange(this.settings)
     },
     getAvailableModels() {

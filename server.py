@@ -38,13 +38,20 @@ class TtsServer:
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    req = requests.post(args.ollama_host + '/api/chat', json=request.get_json())
+    req_json = request.get_json()
+    req = requests.post(args.ollama_host + '/api/chat', json=req_json)
     message = req.json()['message']['content']
-    wav_data = tts_server.tts(message)
-    # wav_data 是多个wav文件的数据，拼接到一起返回
-    base64_waves = []
-    for data in wav_data:
-        base64_waves.append(base64.b64encode(data).decode('utf-8'))
+    # 对于deepseek-r1的特殊处理
+    if isinstance(message, dict):
+        message = message['content']
+        # 移除 <think> 和 </think>之间的内容
+        message = message.replace(r'<think>.*?</think>', '')
+    if req_json['tts_enabled']:
+        wav_data = tts_server.tts(message)
+        # wav_data 是多个wav文件的数据，拼接到一起返回
+        base64_waves = []
+        for data in wav_data:
+            base64_waves.append(base64.b64encode(data).decode('utf-8'))
     return {
         "message": message,
         "wav_data": base64_waves

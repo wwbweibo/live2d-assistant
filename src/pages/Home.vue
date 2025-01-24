@@ -39,7 +39,7 @@
 import { ElMessage } from 'element-plus'
 import { ref, onMounted, onUnmounted, reactive } from 'vue'
 import * as PIXI from 'pixi.js'
-import { Live2DModel as Live2DModelCubism4 } from 'pixi-live2d-display/cubism4'
+import { Live2DModel as Live2DModelCubism4, MotionPreloadStrategy } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
 import ChatModal from '../components/chat_modal.vue'
 import SettingModal from '../components/setting_modal.vue'
@@ -69,7 +69,8 @@ const modelSettings = reactive({
 const assistantSettings = reactive({
   name: 'Senko',
   model: 'qwen2.5',
-  ollamaHost: 'http://localhost:11434'
+  ollamaHost: 'http://localhost:11434',
+  ttsEnabled: false
 })
 
 // 默认设置
@@ -165,13 +166,35 @@ const updateModel = async () => {
     
     const isModel3 = modelSettings.modelPath.endsWith('.model3.json')
     const ModelClass = isModel3 ? Live2DModelCubism4 : Live2DModelCubism2
-    
-    model = await ModelClass.from(modelSettings.modelPath, {
-      motionPreload: "none",
-      autoInteract: false,
-      autoUpdate: true
+    const motions = await fetch(modelSettings.modelPath).
+    then(async resp  =>  {
+      const content = await resp.json();
+      if (content['FileReferences']['Motions'] !== undefined) {
+        return content['FileReferences']['Motions']
+      }
     })
-    
+    model = await ModelClass.from(modelSettings.modelPath, {
+      motionPreload: MotionPreloadStrategy.IDLE,
+      autoInteract: false,
+      autoUpdate: true,
+    })
+    console.log(motions)
+    if (motions) {
+      // 添加交互，随机执行动作
+      // motions 是一个对象，需要转换为数组
+      let motionList: string[] = []
+      for (const motion in motions) {
+        motionList.push(motion)
+      }
+      model.interactive = true
+      model.buttonMode = true
+      model.on('pointerdown', () => {
+        const randomMotion = motionList[Math.floor(Math.random() * motionList.length)]
+        console.log(randomMotion)
+        model.motion(randomMotion)
+      })
+    }
+
     if (model) {
       app.stage.addChild(model)
       model.anchor.set(0.5, 1.0)

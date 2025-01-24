@@ -45,7 +45,7 @@ export default {
       "ollama_host": this.assistantSettings.ollamaHost,
       "system_message": {
         "role": "system",
-        "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯，你的回答应该只包含你作为{{assistant_name}}的第一人称的回答，不要包含任何其他内容。现在，作为{{assistant_name}}，来打个招呼吧！"
+        "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯，你的回答应该只包含你作为{{assistant_name}}的第一人称的回答，不要包含任何其他内容,特别是你对于对话的思考内容。现在，作为{{assistant_name}}，来打个招呼吧！"
       }
     }
   },
@@ -81,7 +81,8 @@ export default {
             body: JSON.stringify({
                 model: this.model,
                 messages: messages,
-                stream: false
+                stream: false,
+                tts_enabled: this.assistantSettings.ttsEnabled
             })
             })
             .then(response => response.json())
