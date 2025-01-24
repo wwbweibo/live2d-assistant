@@ -15,9 +15,7 @@
         v-model="settings.model" 
         @change="updateSettings"
       >
-        <option value="qwen2.5">通义千问2.5</option>
-        <option value="llama2">Llama2</option>
-        <option value="gemma">Gemma</option>
+        <option v-for="item in models" :value="item">{{ item }}</option>
       </select>
     </div>
 
@@ -47,13 +45,30 @@ export default {
   },
   data() {
     return {
-      settings: { ...this.assistantSettings }
+      settings: { ...this.assistantSettings },
+      models: []
     }
   },
   methods: {
     updateSettings() {
       this.onChange(this.settings)
+    },
+    getAvailableModels() {
+      fetch(this.assistantSettings.ollamaHost + '/api/tags')
+      .then(response => response.json())
+      .then(data => {
+        console.log(data['models'])
+        data['models'].map(model => {
+          this.models.push(model['name'])
+        })
+      })
+      .catch(error => {
+        console.error('Error fetching available models:', error)
+      })
     }
+  },
+  mounted() {
+    this.getAvailableModels()
   }
 }
 </script>

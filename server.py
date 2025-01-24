@@ -36,7 +36,7 @@ class TtsServer:
             audios.append(audio_bytes.getvalue())
         return audios
 
-@app.route('/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST'])
 def chat():
     req = requests.post(args.ollama_host + '/api/chat', json=request.get_json())
     message = req.json()['message']['content']
@@ -50,7 +50,7 @@ def chat():
         "wav_data": base64_waves
     }
 
-@app.route('/tts', methods=['POST'])
+@app.route('/api/tts', methods=['POST'])
 def text_to_speech():
     data = request.get_json()
     text = data.get('text', '')
