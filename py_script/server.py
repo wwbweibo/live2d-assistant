@@ -1,6 +1,7 @@
 import sys
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
+from llm import OllamaClient
 import argparse
 import os
 import requests
@@ -10,6 +11,7 @@ import re
 
 app = Flask(__name__)
 tts_server = None
+ollama_client = None
 
 def init_tts_if_needed():
     global tts_server
@@ -22,6 +24,10 @@ def init_tts_if_needed():
                                                args.tts_prompt_text)
         tts_server = TtsServer(cosyvoice, prompt_speech_16k, args.tts_prompt_text)
 
+def init_ollama():
+    global ollama_client
+    ollama_client = OllamaClient(args.ollama_host)
+
 # 允许所有跨域
 CORS(app,
      resources=['/*'],
@@ -32,13 +38,7 @@ CORS(app,
 @app.route('/api/chat', methods=['POST'])
 def chat():
     req_json = request.get_json()
-    req = requests.post(args.ollama_host + '/api/chat', json=req_json)
-    message = req.json()['message']['content']
-    # 对于deepseek-r1的特殊处理
-    if isinstance(message, dict):
-        message = message['content']
-        # 移除 <think> 和 </think>之间的内容
-    message = re.sub(r'<think>.*(\n.*)*</think>\n*', '', message)
+    message = ollama_client.request(req_json)
     base64_waves = []
     if req_json['tts_enabled']:
         init_tts_if_needed()
@@ -100,5 +100,6 @@ if __name__ == '__main__':
     group.add_argument('--tts_prompt_sample_rate', type=int, default=16000, help='采样率')
     group.add_argument('--tts_cosyvoice_install_path', type=str, default='.', help='cosyvoice安装路径')
     args = parser.parse_args()
+    init_ollama()
     app.run(host=args.host, port=args.port)
 
