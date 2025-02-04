@@ -6,9 +6,22 @@ import os
 import requests
 import base64
 import io
-
+import re
 
 app = Flask(__name__)
+tts_server = None
+
+def init_tts_if_needed():
+    global tts_server
+    if args.tts_enabled and tts_server is None:
+        from tts import tts_init, TtsServer
+        cosyvoice, prompt_speech_16k = tts_init(args.tts_cosyvoice_install_path,
+                                               args.tts_module_path, 
+                                               args.tts_prompt_path, 
+                                               args.tts_prompt_sample_rate, 
+                                               args.tts_prompt_text)
+        tts_server = TtsServer(cosyvoice, prompt_speech_16k, args.tts_prompt_text)
+
 # 允许所有跨域
 CORS(app,
      resources=['/*'],
@@ -25,11 +38,12 @@ def chat():
     if isinstance(message, dict):
         message = message['content']
         # 移除 <think> 和 </think>之间的内容
-        message = message.replace(r'<think>.*?</think>', '')
+    message = re.sub(r'<think>.*(\n.*)*</think>\n*', '', message)
+    base64_waves = []
     if req_json['tts_enabled']:
+        init_tts_if_needed()
         wav_data = tts_server.tts(message)
         # wav_data 是多个wav文件的数据，拼接到一起返回
-        base64_waves = []
         for data in wav_data:
             base64_waves.append(base64.b64encode(data).decode('utf-8'))
     return {
@@ -39,12 +53,18 @@ def chat():
 
 @app.route('/api/tts', methods=['POST'])
 def text_to_speech():
+    init_tts_if_needed()
     data = request.get_json()
     text = data.get('text', '')
     prompt = data.get('prompt', '希望你以后能够做的比我还好呦。')
     # 生成语音
     wav_data = tts_server.tts(text)
     return wav_data
+
+@app.route('/api/tags')
+def tags():
+    resp = requests.get(args.ollama_host + '/api/tags')
+    return resp.json()
 
 @app.route('/health')
 def health():
@@ -79,15 +99,6 @@ if __name__ == '__main__':
     group.add_argument('--tts_prompt_text', type=str, default='希望你以后能够做的比我还好呦。', help='提示文本')
     group.add_argument('--tts_prompt_sample_rate', type=int, default=16000, help='采样率')
     group.add_argument('--tts_cosyvoice_install_path', type=str, default='.', help='cosyvoice安装路径')
- 
     args = parser.parse_args()
-    if args.tts_enabled:
-        from tts import tts_init, TtsServer
-        cosyvoice, prompt_speech_16k = tts_init(args.tts_cosyvoice_install_path,
-                                                args.tts_module_path, 
-                                                args.tts_prompt_path, 
-                                                args.tts_prompt_sample_rate, 
-                                                args.tts_prompt_text)
-        tts_server = TtsServer(cosyvoice, prompt_speech_16k, args.tts_prompt_text)
     app.run(host=args.host, port=args.port)
 

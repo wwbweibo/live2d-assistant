@@ -43,7 +43,7 @@ function createWindow(config) {
     },
     transparent: true,
     alwaysOnTop: true,
-    frame: false,
+    frame: true,
   });
   mainWindow.loadURL(`http://${config.server.host}:${config.server.port}/`);
   mainWindow.webContents.on('crashed', () => {
@@ -67,14 +67,16 @@ function createWindow(config) {
 function createBackgroundService(config) {
   const execCommand = [
     config.server.serverPath,
-    "--static_path", config.server.staticPath,
-    "--model_path", config.server.cosyvoiceModelPath,
-    "--prompt_path", config.server.cosyvoicePromptPath,
-    "--prompt_text", config.server.cosyvoicePromptText,
-    "--sample_rate", config.server.cosyvoiceSampleRate,
     "--host", config.server.host,
     "--port", config.server.port,
+    "--static_path", config.server.staticPath,
     "--ollama_host", config.server.ollamaHost,
+    "--tts_enabled", config.server.ttsEnabled ? "True" : "False",
+    "--tts_module_path", config.server.ttsModulePath,
+    "--tts_prompt_path", config.server.ttsPromptPath,
+    "--tts_prompt_text", config.server.ttsPromptText,
+    "--tts_prompt_sample_rate", config.server.ttsSampleRate,
+    "--tts_cosyvoice_install_path", config.server.ttsCosyvoiceInstallPath
   ] 
   const cmd = execCommand.join(" ")
   logger.info('cmd:', config.server.pythonExec, cmd)

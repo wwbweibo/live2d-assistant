@@ -7,3 +7,11 @@ node_modules/
 live2d-models/
 live2d_models_collect/
 .DS_Store
+
+## exclude devin.cursorrules files
+devin.cursorrules/
+tests/
+tools/
+.cursorrules
+.env.example
+

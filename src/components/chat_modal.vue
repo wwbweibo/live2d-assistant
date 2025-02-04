@@ -8,6 +8,13 @@
         :message="message.message"
         :timestamp="message.timestamp"
       />
+      <div v-if="isLoading" class="loading-message">
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
     </div>
     
     <div class="chat-input">
@@ -16,8 +23,15 @@
         class="chat-input-text"
         @keyup.enter.ctrl="sendMessage"
         placeholder="输入消息，按 Ctrl + Enter 发送"
+        :disabled="isLoading"
       ></textarea>
-      <button class="chat-input-button" @click="sendMessage">发送</button>
+      <button 
+        class="chat-input-button" 
+        @click="sendMessage"
+        :disabled="isLoading"
+      >
+        {{ isLoading ? '发送中...' : '发送' }}
+      </button>
     </div>
   </div>
 </template>
@@ -40,10 +54,12 @@ export default {
   data() {
     return {
       messages: [],
-      "assistant_name": this.assistantSettings.name,
-      "model": this.assistantSettings.model,
-      "ollama_host": this.assistantSettings.ollamaHost,
-      "system_message": {
+      assistant_name: this.assistantSettings.name,
+      model: this.assistantSettings.model,
+      ollama_host: this.assistantSettings.ollamaHost,
+      inputMessage: '',
+      isLoading: false,
+      system_message: {
         "role": "system",
         "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯，你的回答应该只包含你作为{{assistant_name}}的第一人称的回答，不要包含任何其他内容,特别是你对于对话的思考内容。现在，作为{{assistant_name}}，来打个招呼吧！"
       }
@@ -73,6 +89,7 @@ export default {
         }
     },
     sendMessageToOllama(messages) {
+      this.isLoading = true
       fetch(this.ollama_host + '/api/chat', {
             method: 'POST',
             headers: {
@@ -109,6 +126,10 @@ export default {
             .catch(error => {
                 console.error('Error:', error)
             })
+            .finally(() => {
+                // 无论成功失败都关闭loading状态
+                this.isLoading = false
+            })
     },
     async playAudio(wav_data) {
       for (let i = 0; i < wav_data.length; i ++) {
@@ -136,7 +157,7 @@ export default {
     this.assistant_name = this.assistantSettings.name
     this.model = this.assistantSettings.model
     this.ollama_host = this.assistantSettings.ollamaHost
-    this.system_message.content = this.system_message.content.replaceAll("{{assistant_name}}", this.assistant_name)
+    this.system_message.content = this.system_message.content.replace(/\{\{assistant_name\}\}/g, this.assistant_name)
     this.sendMessageToOllama([this.system_message])
   }
 }
@@ -228,5 +249,54 @@ export default {
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+.loading-message {
+  padding: 10px;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background-color: #888;
+  border-radius: 50%;
+  display: inline-block;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 
+  40% { 
+    transform: scale(1.0);
+  }
+}
+
+.chat-input-button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+.chat-input-text:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
 }
 </style>
