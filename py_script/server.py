@@ -1,51 +1,74 @@
-import sys
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from llm import OllamaClient
-import argparse
 import os
 import requests
 import base64
-import io
-import re
+from search import BingSearchEngine
+from config import Config
+import argparse
 
 app = Flask(__name__)
 tts_server = None
 ollama_client = None
+config = None
+
+def init_config(path: str = None):
+    """初始化配置"""
+    global config
+    # 可以从命令行参数或环境变量获取配置文件路径
+    config_path = os.environ.get('CONFIG_PATH', path)
+    if config_path is None:
+        raise ValueError("配置文件路径不能为空")
+    config = Config.load(config_path)
+    print("当前配置：")
+    print(config)
 
 def init_tts_if_needed():
+    """初始化TTS服务"""
     global tts_server
-    if args.tts_enabled and tts_server is None:
+    if config.TTS_ENABLED and tts_server is None:
         from tts import tts_init, TtsServer
-        cosyvoice, prompt_speech_16k = tts_init(args.tts_cosyvoice_install_path,
-                                               args.tts_module_path, 
-                                               args.tts_prompt_path, 
-                                               args.tts_prompt_sample_rate, 
-                                               args.tts_prompt_text)
-        tts_server = TtsServer(cosyvoice, prompt_speech_16k, args.tts_prompt_text)
+        cosyvoice, prompt_speech_16k = tts_init(
+            config.TTS_COSYVOICE_INSTALL_PATH,
+            config.TTS_MODULE_PATH,
+            config.TTS_PROMPT_PATH,
+            config.TTS_PROMPT_SAMPLE_RATE,
+            config.TTS_PROMPT_TEXT
+        )
+        tts_server = TtsServer(cosyvoice, prompt_speech_16k, config.TTS_PROMPT_TEXT)
 
 def init_ollama():
+    """初始化Ollama客户端"""
     global ollama_client
-    ollama_client = OllamaClient(args.ollama_host)
+    ollama_client = OllamaClient(config.OLLAMA_HOST)
 
 # 允许所有跨域
 CORS(app,
      resources=['/*'],
      origins=["*"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     supports_credentials=True)  
+     supports_credentials=True)
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
     req_json = request.get_json()
-    message = ollama_client.request(req_json)
+    model = req_json['model']
+    if 'web_search' in req_json and req_json['web_search']:
+        search_engine = BingSearchEngine(ollama_client, model)
+        search_text = req_json['messages'][-1]['content']
+        search_result = search_engine.searh_workflow(search_text)
+        req_json['messages'][-1]['content'] = '使用以下搜索结果作为上下文，回答用户的问题：' + '\n'.join(search_result) + '\n' + req_json['messages'][-1]['content']
+    
+    message = ollama_client.chat(req_json)
     base64_waves = []
+    
     if req_json['tts_enabled']:
         init_tts_if_needed()
         wav_data = tts_server.tts(message)
-        # wav_data 是多个wav文件的数据，拼接到一起返回
         for data in wav_data:
             base64_waves.append(base64.b64encode(data).decode('utf-8'))
+            
     return {
         "message": message,
         "wav_data": base64_waves
@@ -56,50 +79,35 @@ def text_to_speech():
     init_tts_if_needed()
     data = request.get_json()
     text = data.get('text', '')
-    prompt = data.get('prompt', '希望你以后能够做的比我还好呦。')
-    # 生成语音
     wav_data = tts_server.tts(text)
     return wav_data
 
 @app.route('/api/tags')
 def tags():
-    resp = requests.get(args.ollama_host + '/api/tags')
+    resp = requests.get(config.OLLAMA_HOST + '/api/tags')
     return resp.json()
 
 @app.route('/health')
 def health():
     return {
         'status': 'OK',
-        'wwwPath': args.static_path,
-        'indexExists': os.path.exists(os.path.join(args.static_path, 'index.html'))
+        'wwwPath': config.STATIC_PATH,
+        'indexExists': os.path.exists(os.path.join(config.STATIC_PATH, 'index.html'))
     }
 
 @app.route('/')
 def index():
-    return send_from_directory(args.static_path, 'index.html')
+    return send_from_directory(config.STATIC_PATH, 'index.html')
 
-#处理静态文件请求
 @app.route('/<path:path>')
 def send_static_file(path):
-    print(os.path.join(args.static_path, path))
-    return send_from_directory(args.static_path, path)
-
+    return send_from_directory(config.STATIC_PATH, path)
 
 if __name__ == '__main__':
-    # 添加命令行参数
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=5000, help='端口号')
-    parser.add_argument('--host', type=str, default='0.0.0.0', help='主机地址')
-    parser.add_argument('--static_path', type=str, default='static', help='静态文件路径')
-    parser.add_argument('--ollama_host', type=str, default='http://127.0.0.1:11434', help='ollama地址')
-    group = parser.add_argument_group('tts')
-    group.add_argument('--tts_enabled', type=bool, default=False, help='是否启用tts')
-    group.add_argument('--tts_module_path', type=str, default='', help='模型路径')
-    group.add_argument('--tts_prompt_path', type=str, default='asset/zero_shot_prompt.wav', help='提示音路径')
-    group.add_argument('--tts_prompt_text', type=str, default='希望你以后能够做的比我还好呦。', help='提示文本')
-    group.add_argument('--tts_prompt_sample_rate', type=int, default=16000, help='采样率')
-    group.add_argument('--tts_cosyvoice_install_path', type=str, default='.', help='cosyvoice安装路径')
+    parser = argparse.ArgumentParser(description="启动Web服务器")
+    parser.add_argument('--config', type=str, default='config.json', help='配置文件路径')
     args = parser.parse_args()
+    init_config(args.config)
     init_ollama()
-    app.run(host=args.host, port=args.port)
+    app.run(host=config.HOST, port=config.PORT)
 

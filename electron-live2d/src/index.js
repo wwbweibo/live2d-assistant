@@ -6,6 +6,8 @@ const logger = require('./utils/logger');
 const screen = require('electron').screen;
 const fs = require('fs');
 const config = require('./config');
+const { dialog } = require('electron');
+const { resolvePythonExecPath, resolvePythonVirtualEnvPath, isVirtualEnv } = require('./utils/file-system');
 
 if (process.platform === 'win32') {
   process.env.LANG = 'zh_CN.UTF-8';
@@ -19,11 +21,13 @@ if (require('electron-squirrel-startup')) {
 }
 
 process.on('uncaughtException', (error) => {
-  logger.error('主进程未捕获的异常:', error);
+  logger.error('主进程未捕获的异常:', error.message);
+  app.quit();
 });
 
 process.on('unhandledRejection', (reason) => {
   logger.error('主进程未处理的 Promise 拒绝:', reason.message);
+  app.quit();
 });
 
 // 在创建窗口前加载配置
@@ -64,25 +68,24 @@ function createWindow(config) {
   });
 }
 
-function createBackgroundService(config) {
+function createBackgroundService(config, configPath) {
+  const pythonExecPath = resolvePythonExecPath(config.server.pythonExec)
   const execCommand = [
     config.server.serverPath,
-    "--host", config.server.host,
-    "--port", config.server.port,
-    "--static_path", config.server.staticPath,
-    "--ollama_host", config.server.ollamaHost,
-    "--tts_enabled", config.server.ttsEnabled ? "True" : "False",
-    "--tts_module_path", config.server.ttsModulePath,
-    "--tts_prompt_path", config.server.ttsPromptPath,
-    "--tts_prompt_text", config.server.ttsPromptText,
-    "--tts_prompt_sample_rate", config.server.ttsSampleRate,
-    "--tts_cosyvoice_install_path", config.server.ttsCosyvoiceInstallPath
-  ] 
+    "--config", configPath
+  ]
   const cmd = execCommand.join(" ")
-  logger.info('cmd:', config.server.pythonExec, cmd)
-  var subprocess = require('child_process').spawn(config.server.pythonExec, execCommand, {
-    cwd: "D:\\cosyvoice\\CosyVoice"
-  })
+  logger.info('cmd:', pythonExecPath, cmd)
+  var subprocess = null
+  if (isVirtualEnv(pythonExecPath)) {
+    subprocess = require('child_process').spawn(pythonExecPath, execCommand, {
+      env: {
+        VIRTUAL_ENV: resolvePythonVirtualEnvPath(pythonExecPath)
+      }
+    })
+  } else {
+    subprocess = require('child_process').spawn(pythonExecPath, execCommand)
+  }
   subprocess.stdout.on('data', (data) => {
     logger.info(data.toString());
   });
@@ -95,15 +98,15 @@ function createBackgroundService(config) {
   subprocess.on('exit', (code) => {
     if (code !== 0) {
       logger.error(`后台服务异常退出，退出码: ${code}`);
+      throw new Error(`后台服务异常退出，退出码: ${code}`);
     }
   });
   return subprocess;
 }
 
-async function waitForServer(config) {
-  let retryCount = 0;
-  const maxRetries = 100;
-  try{
+async function waitForServer(config, retryCount = 0) {
+  const maxRetries = 10;
+  try {
     logger.info('尝试连接服务器...');
     const response = await fetch(`http://${config.server.host}:${config.server.port}/health`);
     const health = await response.json();
@@ -122,23 +125,37 @@ async function waitForServer(config) {
     logger.error('连接服务器失败', err.message);
     if (retryCount < maxRetries) {
       logger.warn(`等待服务器启动，重试次数: ${retryCount}`);
-      setTimeout(() => {
-        waitForServer(config);
-      }, 1000);
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(waitForServer(config, retryCount));
+        }, 1000);
+      });
     } else {
       logger.error('无法连接到服务器，请检查服务器是否正常启动', err.message);
+      // 抛出异常，交由主进程处理
+      throw new Error('无法连接到服务器，请检查服务器是否正常启动');
     }
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   try {
     logger.info('应用程序启动');
-    const backgroundService = createBackgroundService(appConfig);
-    waitForServer(appConfig);
-    // createWindow(appConfig);
+    const backgroundService = createBackgroundService(appConfig, config.configPath);
+    // 等待服务器启动
+    await waitForServer(appConfig);
+    // 监听后台服务的错误
+    backgroundService.on('error', (error) => {
+      logger.error('后台服务错误:', error.message);
+      dialog.showErrorBox('后台服务错误', error.message);
+      app.quit();
+    });
+
   } catch (error) {
     logger.error('应用程序启动失败:', error.message);
+    logger.error(error.stack);
+    dialog.showErrorBox('应用程序启动失败', error.message);
+    app.quit();
   }
 });
 

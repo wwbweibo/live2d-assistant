@@ -1,16 +1,19 @@
 {
+    "debug": true,
     "server": {
-        "pythonExec": "C:\\Users\\weibo\\anaconda3\\envs\\cosyvoice\\python.exe",
-        "serverPath": "C:\\Users\\weibo\\Documents\\code\\live2d-project\\server.py",
+        "pythonExec": "/Users/weibo/code/myself/live2d-assistant/venv/bin/python",
+        "serverPath": "/Users/weibo/code/myself/live2d-assistant/py_script/server.py",
         "port": 3000,
         "host": "localhost",
-        "staticPath": "C:\\Users\\weibo\\Documents\\code\\live2d-project\\dist",
+        "staticPath": "/Users/weibo/code/myself/live2d-assistant/dist",
         "ollamaHost": "http://localhost:11434",
-        "ttsEnabled": true,
-        "ttsModulePath": "D:\\cosyvoice\\CosyVoice\\pretrained_models\\CosyVoice2-0.5B",
-        "ttsPromptPath": "C:\\Users\\weibo\\Documents\\code\\live2d-project\\electron-live2d\\out\\electron-live2d-win32-x64\\www\\jinxi.wav",
-        "ttsPromptText": "欢迎来到今州，远道而来的贵客，事务繁忙，招待不周之处还请见谅。若是有什么要紧事，可以来边庭找我。",
-        "ttsSampleRate": 16000,
-        "ttsCosyvoiceInstallPath": "D:\\cosyvoice\\CosyVoice"
+        "tts": {
+            "enabled": false,
+            "modulePath": "/Users/weibo/code/myself/live2d-assistant/py_script/asset/zero_shot_prompt.wav",
+            "promptPath": "C:\\Users\\weibo\\Documents\\code\\live2d-project\\electron-live2d\\out\\electron-live2d-win32-x64\\www\\jinxi.wav",
+            "promptText": "欢迎来到今州，远道而来的贵客，事务繁忙，招待不周之处还请见谅。若是有什么要紧事，可以来边庭找我。",
+            "sampleRate": 16000,
+            "cosyvoiceInstallPath": "D:\\cosyvoice\\CosyVoice"
+        }
     }
 }

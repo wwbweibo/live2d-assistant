@@ -1,13 +1,8 @@
 <template>
   <div class="chat-container">
     <div class="chat-messages">
-      <ChatMessage  
-        v-for="message in messages"
-        :key="message.id"
-        :username="message.username"
-        :message="message.message"
-        :timestamp="message.timestamp"
-      />
+      <ChatMessage v-for="message in messages" :key="message.id" :username="message.username" :message="message.message"
+        :timestamp="message.timestamp" />
       <div v-if="isLoading" class="loading-message">
         <div class="loading-dots">
           <span></span>
@@ -16,20 +11,18 @@
         </div>
       </div>
     </div>
-    
     <div class="chat-input">
-      <textarea 
-        v-model="inputMessage" 
-        class="chat-input-text"
-        @keyup.enter.ctrl="sendMessage"
-        placeholder="输入消息，按 Ctrl + Enter 发送"
-        :disabled="isLoading"
-      ></textarea>
-      <button 
-        class="chat-input-button" 
-        @click="sendMessage"
-        :disabled="isLoading"
-      >
+      <div class="chat-input-controls">
+      </div>
+      <div class="chat-input-text-container" :class="{ 'loading': isLoading }">
+        <textarea v-model="inputMessage" class="chat-input-text" @keyup.enter.ctrl="sendMessage"
+          placeholder="输入消息，按 Ctrl + Enter 发送" :disabled="isLoading"></textarea>
+        <div class="chat-input-controls">
+          <el-switch v-model="webSearchEnabled" class="web-search-switch" :active-action-icon="Search"
+            :inactive-action-icon="Hide" />
+        </div>
+      </div>
+      <button class="chat-input-button" @click="sendMessage" :disabled="isLoading">
         {{ isLoading ? '发送中...' : '发送' }}
       </button>
     </div>
@@ -38,12 +31,17 @@
 
 <script>
 import ChatMessage from './chat_message.vue';
-import { ElScrollbar } from 'element-plus';
+import { ElSwitch, ElInput, ElIcon } from 'element-plus'
+import { Hide, View, Search } from '@element-plus/icons-vue'
+import 'element-plus/dist/index.css'
 
 export default {
   name: 'ChatModal',
   components: {
-    ChatMessage
+    ChatMessage,
+    ElSwitch,
+    ElInput,
+    ElIcon
   },
   props: {
     assistantSettings: {
@@ -59,6 +57,10 @@ export default {
       ollama_host: this.assistantSettings.ollamaHost,
       inputMessage: '',
       isLoading: false,
+      webSearchEnabled: false,
+      View,
+      Hide,
+      Search,
       system_message: {
         "role": "system",
         "content": "在接下来的对话中，你将扮演一位名为{{assistant_name}}的助手，你的角色设定为18-24岁之间的女性，喜欢动漫和二次元，是一个音乐能手，喜欢看乐队番，梦想自己也能组乐队，你可以回答用户的问题，或者提供一些有趣的对话。你的回答需要尽可能的幽默，但是不要过于冒犯，你的回答应该只包含你作为{{assistant_name}}的第一人称的回答，不要包含任何其他内容,特别是你对于对话的思考内容。现在，作为{{assistant_name}}，来打个招呼吧！"
@@ -67,72 +69,73 @@ export default {
   },
   methods: {
     sendMessage() {
-        const input = document.querySelector('.chat-input-text');
-        const message = input.value;
-        if (message) {
-            // 添加新消息
-            this.messages.push({
-                id: this.messages.length + 1,
-                username: "You",
-                message,
-                timestamp: new Date().toLocaleString()
-            })
-            let chat_history = this.messages.map(msg => ({
-                    role: msg.username === 'You' ? 'user' : 'assistant',
-                    content: msg.message
-                }))
-            // 清空输入框
-            this.inputMessage = ''
-            chat_history.unshift(this.system_message)
-            // 请求ollama的chat接口进行回复
-            this.sendMessageToOllama(chat_history)
-        }
+      const input = document.querySelector('.chat-input-text');
+      const message = input.value;
+      if (message) {
+        // 添加新消息
+        this.messages.push({
+          id: this.messages.length + 1,
+          username: "You",
+          message,
+          timestamp: new Date().toLocaleString()
+        })
+        let chat_history = this.messages.map(msg => ({
+          role: msg.username === 'You' ? 'user' : 'assistant',
+          content: msg.message
+        }))
+        // 清空输入框
+        this.inputMessage = ''
+        chat_history.unshift(this.system_message)
+        // 请求ollama的chat接口进行回复
+        this.sendMessageToOllama(chat_history)
+      }
     },
     sendMessageToOllama(messages) {
       this.isLoading = true
       fetch(this.ollama_host + '/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: this.model,
-                messages: messages,
-                stream: false,
-                tts_enabled: this.assistantSettings.ttsEnabled
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: messages,
+          stream: false,
+          tts_enabled: this.assistantSettings.ttsEnabled,
+          web_search: this.webSearchEnabled
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.message) {
+            let message = data.message;
+            // 针对deepseek的处理，deepseek返回的响应中是一个json对象，判断message是否为json对象
+            if (typeof message === 'object') {
+              message = message['content']
+              // 移除 <think> 和 </think>之间的内容
+              message = message.replace(/<think>.*?<\/think>/gs, '')
+            }
+            this.messages.push({
+              id: this.messages.length + 1,
+              username: this.assistant_name,
+              message: message,
+              timestamp: new Date().toLocaleString()
             })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message) {
-                  let message = data.message;
-                  // 针对deepseek的处理，deepseek返回的响应中是一个json对象，判断message是否为json对象
-                  if (typeof message === 'object') {
-                    message = message['content']
-                    // 移除 <think> 和 </think>之间的内容
-                    message = message.replace(/<think>.*?<\/think>/gs, '')
-                  }
-                  this.messages.push({
-                      id: this.messages.length + 1,
-                      username: this.assistant_name,
-                      message: message,
-                      timestamp: new Date().toLocaleString()
-                  })
-                }
-                if (data.wav_data) {
-                  this.playAudio(data.wav_data)
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error)
-            })
-            .finally(() => {
-                // 无论成功失败都关闭loading状态
-                this.isLoading = false
-            })
+          }
+          if (data.wav_data) {
+            this.playAudio(data.wav_data)
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error)
+        })
+        .finally(() => {
+          // 无论成功失败都关闭loading状态
+          this.isLoading = false
+        })
     },
     async playAudio(wav_data) {
-      for (let i = 0; i < wav_data.length; i ++) {
+      for (let i = 0; i < wav_data.length; i++) {
         // base64解码
         const binaryString = window.atob(wav_data[i]);
         const len = binaryString.length;
@@ -168,7 +171,7 @@ export default {
   margin-top: 20px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 95%;
   box-sizing: border-box;
 }
 
@@ -200,32 +203,62 @@ export default {
 
 .chat-input {
   display: flex;
-  gap: 10px;
+  height: 140px;
+  margin: 0 0 10px 0;
+}
+
+.chat-input-text-container {
+  display: flex;
+  flex-direction: column;
+  width: 85%;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px 0 0 5px;
+  background-color: #FFFFFF;
+  padding: 10px 0 0 10px;
+}
+
+.chat-input-text-container.loading {
+  background-color: #f5f5f5;
+}
+
+.chat-input-text-container textarea {
+  border: none;
+  /* 仅用textarea 选中后的样式 */
+  outline: none;
+  resize: none;
+}
+
+.chat-input-controls {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+}
+
+.web-search-switch {
+  margin: 0;
+  padding: 0;
 }
 
 .chat-input-text {
   flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  resize: none;
-  height: 80px;
-  font-size: 14px;
+  min-height: 80px;
 }
 
 .chat-input-button {
   padding: 0 20px;
-  height: 80px;
+  /* 高度继承 */
+  height: inherit;
   background: #4CAF50;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 0 5px 5px 0;
   cursor: pointer;
   font-size: 14px;
   white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 15%;
 }
 
 .chat-input-button:hover {
@@ -282,10 +315,14 @@ export default {
 }
 
 @keyframes bounce {
-  0%, 80%, 100% { 
+
+  0%,
+  80%,
+  100% {
     transform: scale(0);
-  } 
-  40% { 
+  }
+
+  40% {
     transform: scale(1.0);
   }
 }
@@ -298,5 +335,15 @@ export default {
 .chat-input-text:disabled {
   background: #f5f5f5;
   cursor: not-allowed;
+}
+
+/* 添加一些自定义样式来调整开关的位置和外观 */
+:deep(.el-switch) {
+  --el-switch-on-color: #4CAF50;
+}
+
+:deep(.el-switch__label) {
+  color: #666;
+  font-size: 13px;
 }
 </style>
