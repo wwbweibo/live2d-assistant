@@ -4,38 +4,31 @@
     <div class="settings-header">
       <h2>设置</h2>
       <div class="tab-container">
-        <div 
-          v-for="tab in tabs" 
-          :key="tab.id"
-          :class="['tab-item', { active: currentTab === tab.id }]"
-          @click="currentTab = tab.id"
-        >
-          {{ tab.name }}
+        <div v-for="tab in tabs" :key="tab.id" :class="['tab-item', { active: currentTab === tab.id }]"
+          @click="currentTab = tab.id">
+          <el-tooltip :content="tab.tooltip" placement="top">
+            <div class="tab-content">
+              <el-icon>
+                <component :is="tab.icon" />
+              </el-icon>
+              <!-- <span>{{ tab.name }}</span> -->
+            </div>
+          </el-tooltip>
         </div>
       </div>
     </div>
 
     <!-- 设置内容区域 -->
     <div class="settings-content">
+      <div v-show="currentTab === 'system'" class="tab-content">
+        <SystemSettings :systemSettings="settings.system" :onChange="handleSystemSettingsChange" />
+      </div>
       <div v-show="currentTab === 'model'" class="tab-content">
-        <ModelSettings 
-          :modelSettings="modelSettings"
-          :onChange="handleModelSettingsChange"
-        />
+        <ModelSettings :modelSettings="settings.model" :onChange="handleModelSettingsChange" />
       </div>
 
       <div v-show="currentTab === 'assistant'" class="tab-content">
-        <AssistantSettings 
-          :assistantSettings="assistantSettings"
-          :onChange="handleAssistantSettingsChange"
-        />
-      </div>
-
-      <div v-show="currentTab === 'background'" class="tab-content">
-        <BackgroundSettings 
-          :backgroundSettings="modelSettings"
-          :onChange="handleModelSettingsChange"
-        />
+        <AssistantSettings :assistantSettings="settings.assistant" :onChange="handleAssistantSettingsChange" />
       </div>
     </div>
   </div>
@@ -45,41 +38,80 @@
 import ModelSettings from './model_settings.vue'
 import AssistantSettings from './assistant_settings.vue'
 import BackgroundSettings from './background_settings.vue'
+import SystemSettings from './system_settings.vue'
+import { ElTooltip, ElIcon } from 'element-plus'
+import {
+  Setting,
+  Monitor,
+  Service,
+  Picture,
+  ChatDotRound,
+  Cpu
+} from '@element-plus/icons-vue'
 
 export default {
   name: 'SettingModal',
   components: {
     ModelSettings,
     AssistantSettings,
-    BackgroundSettings
+    BackgroundSettings,
+    SystemSettings,
+    ElTooltip,
+    ElIcon,
+    Setting,
+    Monitor,
+    Service,
+    Picture,
+    Cpu,
+    ChatDotRound
   },
   props: {
-    modelSettings: {
+    settings: {
       type: Object,
       required: true
     },
-    assistantSettings: {
-      type: Object,
+    updateSettings: {
+      type: Function,
       required: true
     }
   },
-  emits: ['updateModelSettings', 'updateAssistantSettings'],
   data() {
     return {
-      currentTab: 'model',
+      currentTab: 'system',
       tabs: [
-        { id: 'model', name: '模型设置' },
-        { id: 'assistant', name: '助手设置' },
-        { id: 'background', name: '背景设置' }
+        {
+          id: 'system',
+          name: '系统设置',
+          icon: 'setting',
+          tooltip: '系统相关的基础设置'
+        },
+        {
+          id: 'model',
+          name: '模型设置',
+          icon: 'Cpu',
+          tooltip: 'AI模型的相关配置'
+        },
+        {
+          id: 'assistant',
+          name: '助手设置',
+          icon: 'chat-dot-round',
+          tooltip: '助手的个性化设置'
+        }
       ]
     }
   },
   methods: {
     handleModelSettingsChange(settings) {
-      this.$emit('updateModelSettings', settings)
+      this.settings.model = { ...settings }
+      this.updateSettings(this.settings)
     },
     handleAssistantSettingsChange(settings) {
-      this.$emit('updateAssistantSettings', settings)
+      this.settings.assistant = { ...settings }
+      this.updateSettings(this.settings)
+    },
+    handleSystemSettingsChange(settings) {
+      this.settings.system = { ...settings }
+      this.updateSettings(this.settings)
     }
   }
 }
@@ -129,8 +161,7 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.settings-content {
-}
+.settings-content {}
 
 .tab-content {
   animation: fadeIn 0.3s ease-in-out;
@@ -160,9 +191,14 @@ export default {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.el-icon {
+  font-size: 16px;
 }
 </style>

@@ -18,12 +18,7 @@
         <button class="save-button" @click="saveSettings">保存设置</button>
         <button class="close-button" @click="showSettings = false">关闭</button>
       </div>
-      <SettingModal 
-        :modelSettings="modelSettings"
-        :assistantSettings="assistantSettings"
-        @updateModelSettings="handleModelSettingsUpdate"
-        @updateAssistantSettings="handleAssistantSettingsUpdate"
-      />
+      <SettingModal :settings="settings" :updateSettings="handleSettingsUpdate" />
     </div>
     <!-- 聊天弹窗 -->
     <div class="chat-modal" v-if="showChat">
@@ -82,12 +77,26 @@ const defaultSettings = {
   backgroundPath: 'assets/background.jpg'
 }
 
+const systemSettings = reactive({
+  serverUrl: 'http://localhost:8000',
+  debugEnabled: false,
+  backgroundPath: 'assets/background.jpg'
+})
+
+const settings = reactive({
+  'system': systemSettings,
+  'model': modelSettings,
+  'assistant': assistantSettings,
+})
+
 // 保存设置到 localStorage
 const saveSettings = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     modelSettings,
     assistantSettings
   }))
+  // 调用设置接口
+
   // 提示保存成功
   ElMessage.success('设置已保存')
 }
@@ -104,12 +113,10 @@ const loadSettings = () => {
 
 // 处理模型设置更新
 const handleModelSettingsUpdate = (newSettings: any) => {
+  console.log('handleModelSettingsUpdate', newSettings)
   // 检查是否改变了模型路径
   const modelPathChanged = modelSettings.modelPath !== newSettings.modelPath
-  
-  // 更新设置
   Object.assign(modelSettings, newSettings)
-  
   // 如果模型路径改变，需要重新加载模型
   if (modelPathChanged) {
     updateModel()
@@ -118,14 +125,30 @@ const handleModelSettingsUpdate = (newSettings: any) => {
     updatePosition()
     updateScale()
   }
-  
   // 更新背景
   updateBackground()
 }
 
-// 处理助手设置更新
-const handleAssistantSettingsUpdate = (newSettings: any) => {
-  Object.assign(assistantSettings, newSettings)
+const isModelSettingUpdated = (oldSetting, newSetting) => {
+  return oldSetting.modelPath !== newSetting.modelPath ||
+    oldSetting.offsetX !== newSetting.offsetX ||
+    oldSetting.offsetY !== newSetting.offsetY ||
+    oldSetting.scale !== newSetting.scale
+}
+const isSystemSettingUpdated = (oldSetting, newSetting) => {
+  return oldSetting.serverUrl !== newSetting.serverUrl ||
+    oldSetting.debugEnabled !== newSetting.debugEnabled ||
+    oldSetting.backgroundPath !== newSetting.backgroundPath
+}
+
+const handleSettingsUpdate = (newSettings: any) => {
+  if (isModelSettingUpdated(modelSettings, newSettings.model)) {
+    handleModelSettingsUpdate(newSettings.model)
+  }
+  if (settings.system.backgroundPath !== newSettings.system.backgroundPath) {
+    updateBackground()
+  }
+  Object.assign(settings, newSettings)
 }
 
 // 更新模型位置
@@ -149,30 +172,30 @@ const updateScale = () => {
 const updateBackground = () => {
   const homeElement = document.querySelector('.home') as HTMLElement
   if (homeElement) {
-    homeElement.style.backgroundImage = `url('${modelSettings.backgroundPath}')`
+    homeElement.style.backgroundImage = `url('${settings.system.backgroundPath}')`
   }
 }
 
 // 更新模型
 const updateModel = async () => {
   if (!app) return
-  
+
   try {
     // 如果存在旧模型，先移除
     if (model) {
       app.stage.removeChild(model)
       model.destroy()
     }
-    
+
     const isModel3 = modelSettings.modelPath.endsWith('.model3.json')
     const ModelClass = isModel3 ? Live2DModelCubism4 : Live2DModelCubism2
     const motions = await fetch(modelSettings.modelPath).
-    then(async resp  =>  {
-      const content = await resp.json();
-      if (content['FileReferences']['Motions'] !== undefined) {
-        return content['FileReferences']['Motions']
-      }
-    })
+      then(async resp => {
+        const content = await resp.json();
+        if (content['FileReferences']['Motions'] !== undefined) {
+          return content['FileReferences']['Motions']
+        }
+      })
     model = await ModelClass.from(modelSettings.modelPath, {
       motionPreload: MotionPreloadStrategy.IDLE,
       autoInteract: false,
@@ -245,6 +268,7 @@ onUnmounted(() => {
   padding: 20px;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
+
 .home {
   width: 100vw;
   height: 100vh;
@@ -355,4 +379,4 @@ canvas {
 .close-button:hover {
   background: #3aa876;
 }
-</style> 
+</style>

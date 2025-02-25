@@ -87,6 +87,22 @@ def tags():
     resp = requests.get(config.OLLAMA_HOST + '/api/tags')
     return resp.json()
 
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    '''
+    获取系统设置
+    '''
+    return config
+
+@app.route('/api/settings', methods=['POST'])
+def set_settings():
+    '''
+    设置系统设置
+    '''
+    data = request.get_json()
+    config.update(data)
+    return config
+
 @app.route('/health')
 def health():
     return {

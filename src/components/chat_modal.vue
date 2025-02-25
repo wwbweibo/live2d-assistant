@@ -160,7 +160,11 @@ export default {
     this.assistant_name = this.assistantSettings.name
     this.model = this.assistantSettings.model
     this.ollama_host = this.assistantSettings.ollamaHost
-    this.system_message.content = this.system_message.content.replace(/\{\{assistant_name\}\}/g, this.assistant_name)
+    if (this.assistantSettings.systemPrompt) {
+      this.system_message.content = this.assistantSettings.systemPrompt.replace(/\{\{assistant_name\}\}/g, this.assistant_name)
+    } else {
+      this.system_message.content = this.system_message.content.replace(/\{\{assistant_name\}\}/g, this.assistant_name)
+    }
     this.sendMessageToOllama([this.system_message])
   }
 }
