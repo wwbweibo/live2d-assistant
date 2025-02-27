@@ -15,3 +15,5 @@ tools/
 .cursorrules
 .env.example
 __pycache__/
+
+.venv/

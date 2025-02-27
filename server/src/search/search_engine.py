@@ -1,7 +1,7 @@
 import requests
 import re
 from bs4 import BeautifulSoup
-from llm import OllamaClient
+from llm_adapters import LLMAdapter
 from utils.selenium import WebDriverManager
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -13,11 +13,11 @@ class SearchResultItem:
         self.url = url
 
 class BaseSearchEngine():
-    def __init__(self, ollama_client: OllamaClient, model: str):
-        self.ollama_client = ollama_client
+    def __init__(self, llm_adapter: LLMAdapter, model: str):
+        self.llm_adapter = llm_adapter
         self.model = model
 
-    def find_top_best_match_article(self, text: str, result_list: list) -> str:
+    async def find_top_best_match_article(self, text: str, result_list: list) -> str:
         format_result_list_2_text = ""
         for idx, result in enumerate(result_list):
             format_result_list_2_text += f"{idx + 1}: 标题：{result.title}; 内容：{result.preview};\n"
@@ -52,11 +52,11 @@ class BaseSearchEngine():
                 "required": ["result"]
             }
         }
-        result = self.ollama_client.generate(req)
+        result = await self.llm_adapter.generate(self.model, prompt, req['format'])
         result = json.loads(result)
         return result['result']
 
-    def before_search(self, text: str) -> str:
+    async def before_search(self, text: str) -> str:
         prompt = f"""接下来的这段话是由用户提供的一段文本，其中包含了用户需要搜索的内容，请根据用户提供的内容，返回一组搜索引擎使用的查询关键词。你的回答只需要包含搜索查询语句，不要包含任何其他内容。
         这里是可供参考的示例：
         ```
@@ -71,85 +71,38 @@ class BaseSearchEngine():
             "prompt": prompt,   
             "stream": False
         }
-        return self.ollama_client.generate(req)
+        return await self.llm_adapter.generate(self.model, prompt)
     
-    def read_search_result_detail(self, search_result: list[SearchResultItem], selected_result_idx: list[int]) -> str:
+    async def read_search_result_detail(self, search_result: list[SearchResultItem], selected_result_idx: list[int]) -> str:
         detail_list = []
         selected_result_idx = [int(idx) for idx in selected_result_idx]
         for idx in selected_result_idx:
-            search_result_detail = self.get_search_result_detail(search_result[idx - 1])
+            search_result_detail = await self.get_search_result_detail(search_result[idx - 1])
             detail_list.append(search_result_detail)
         return detail_list
 
-    def get_search_result_detail(self, search_result: SearchResultItem) -> str:
+    async def get_search_result_detail(self, search_result: SearchResultItem) -> str:
         with WebDriverManager() as driver:
             content = driver.get_page_content(search_result.url)
             soup = BeautifulSoup(content, 'html.parser')
             return soup.text
         
     # 一个抽象的搜索方法，需要子类实现
-    def search(self, query: str) -> list[SearchResultItem]:
+    async def search(self, query: str) -> list[SearchResultItem]:
         pass
 
-    def searh_workflow(self, text: str) -> list[str]:
+    async def searh_workflow(self, text: str) -> list[str]:
         '''
         搜索工作流，根据用户提供的文本，返回最符合用户搜索意图的搜索结果的前5条记录，并返回选中的搜索结果详情
         '''
-        query = self.before_search(text)
+        query = await self.before_search(text)
         print("提取的查询语句：", query)
         result_list = self.search(query)
         print("搜索结果：", result_list)
-        top_result =  self.find_top_best_match_article(text, result_list)
+        top_result =  await self.find_top_best_match_article(text, result_list)
         print("最符合用户搜索意图的搜索结果：", top_result)
-        selected_result_detail = self.read_search_result_detail(result_list, top_result)
+        selected_result_detail = await self.read_search_result_detail(result_list, top_result)
         print("选中的搜索结果详情：", selected_result_detail)
         return selected_result_detail
-
-class DuckDuckGoSearchEngine(BaseSearchEngine):
-    def __init__(self, ollama_client: OllamaClient, model: str):
-        super().__init__(ollama_client, model)
-        self.engine_name = 'DuckDuckGO'
-        self.url = "https://duckduckgo.com/?t=h_&ia=web&q="
-
-    def search(self, query: str) -> list[SearchResultItem]:
-        with WebDriverManager() as driver:
-            if driver:
-                driver.get(self.url + query)
-                content = driver.page_source
-                soup = BeautifulSoup(content, 'html.parser')
-                # 提取网页内容中的标题和描述
-                result_list = soup.find('li')
-                formatted_result = []
-                for result in result_list:
-                # 提取标题和预览文本
-                    title_html = result.find('h2')
-                    title = title_html.text
-                    preview = result.find('span').text
-                    url = title_html.find('a')['href']
-                    formatted_result.append(SearchResultItem(title, preview, url))
-        return formatted_result
-
-
-class BingSearchEngine(BaseSearchEngine):
-    def __init__(self, ollama_client: OllamaClient, model: str):
-        super().__init__(ollama_client, model)
-        self.engine_name = 'Bing'
-        self.url = "https://www.bing.com/search?q="
-
-    def search(self, query: str) -> str:
-        with WebDriverManager() as driver:
-            content = driver.get_page_content(self.url + query)
-            soup = BeautifulSoup(content, 'html.parser')
-            # 获取 <li class="b_algo">
-            li_list = soup.find_all('li', class_='b_algo')
-            result_list = []
-            for li in li_list:
-                title = li.find('h2')
-                url = title.find('a')['href']
-                title_text = title.text
-                preview = li.find('div', class_='b_caption')
-                preview_text = preview.text
-                result_list.append(SearchResultItem(title_text, preview_text, url))
-            return result_list
 
 

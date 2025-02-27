@@ -6,7 +6,6 @@
         "port": 3000,
         "host": "localhost",
         "staticPath": "/Users/weibo/code/myself/live2d-assistant/dist",
-        "ollamaHost": "http://localhost:11434",
         "tts": {
             "enabled": false,
             "modulePath": "/Users/weibo/code/myself/live2d-assistant/py_script/asset/zero_shot_prompt.wav",
@@ -14,6 +13,19 @@
             "promptText": "欢迎来到今州，远道而来的贵客，事务繁忙，招待不周之处还请见谅。若是有什么要紧事，可以来边庭找我。",
             "sampleRate": 16000,
             "cosyvoiceInstallPath": "D:\\cosyvoice\\CosyVoice"
-        }
+        },
+        "llm": {
+            "provider": "ollama",
+            "config": {
+                "ollamaHost": "http://localhost:11434"
+            }
+        },
+        "mcp_servers": [
+            {
+                "name": "mcp-server-1",
+                "transport": "sse",
+                "url": "http://127.0.0.1:8001/sse"
+            }
+        ]
     }
 }
