@@ -51,22 +51,6 @@ const showSettings = ref(false)
 const showChat = ref(false)
 const STORAGE_KEY = 'live2d-viewer-settings'
 
-// 模型设置
-const modelSettings = reactive({
-  modelPath: 'assets/models/Senko_Normals/senko.model3.json',
-  offsetX: 0,
-  offsetY: 0,
-  scale: 0.5,
-  backgroundPath: 'assets/background.jpg'
-})
-
-// 助手设置
-const assistantSettings = reactive({
-  name: 'Senko',
-  model: 'qwen2.5',
-  ollamaHost: 'http://localhost:11434',
-  ttsEnabled: false
-})
 
 // 默认设置
 const defaultSettings = {
@@ -83,6 +67,23 @@ const systemSettings = reactive({
   backgroundPath: 'assets/background.jpg'
 })
 
+const modelSettings = reactive({
+  modelPath: 'assets/models/Senko_Normals/senko.model3.json',
+  offsetX: 0,
+  offsetY: 0,
+  scale: 0.5,
+  backgroundPath: 'assets/background.jpg'
+})
+
+// 助手设置
+const assistantSettings = reactive({
+  name: 'Senko',
+  model: 'qwen2.5',
+  ollamaHost: 'http://localhost:11434',
+  ttsEnabled: false
+})
+
+
 const settings = reactive({
   'system': systemSettings,
   'model': modelSettings,
@@ -92,6 +93,7 @@ const settings = reactive({
 // 保存设置到 localStorage
 const saveSettings = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    systemSettings,
     modelSettings,
     assistantSettings
   }))
@@ -108,6 +110,7 @@ const loadSettings = () => {
     const parsed = JSON.parse(savedSettings)
     Object.assign(modelSettings, parsed.modelSettings)
     Object.assign(assistantSettings, parsed.assistantSettings)
+    Object.assign(systemSettings, parsed.systemSettings)
   }
 }
 
@@ -129,21 +132,43 @@ const handleModelSettingsUpdate = (newSettings: any) => {
   updateBackground()
 }
 
+const handleSystemSettingsUpdate = (newSettings: any) => {
+  Object.assign(systemSettings, newSettings)
+}
+
+const handleAssistantSettingsUpdate = (newSettings: any) => {
+  Object.assign(assistantSettings, newSettings)
+}
+
 const isModelSettingUpdated = (oldSetting, newSetting) => {
   return oldSetting.modelPath !== newSetting.modelPath ||
     oldSetting.offsetX !== newSetting.offsetX ||
     oldSetting.offsetY !== newSetting.offsetY ||
     oldSetting.scale !== newSetting.scale
 }
+
 const isSystemSettingUpdated = (oldSetting, newSetting) => {
   return oldSetting.serverUrl !== newSetting.serverUrl ||
     oldSetting.debugEnabled !== newSetting.debugEnabled ||
     oldSetting.backgroundPath !== newSetting.backgroundPath
 }
 
+const isAssistantSettingUpdated = (oldSetting, newSetting) => {
+  return oldSetting.name !== newSetting.name ||
+    oldSetting.model !== newSetting.model ||
+    oldSetting.ollamaHost !== newSetting.ollamaHost ||
+    oldSetting.ttsEnabled !== newSetting.ttsEnabled
+}
+
 const handleSettingsUpdate = (newSettings: any) => {
   if (isModelSettingUpdated(modelSettings, newSettings.model)) {
     handleModelSettingsUpdate(newSettings.model)
+  }
+  if (isSystemSettingUpdated(systemSettings, newSettings.system)) {
+    handleSystemSettingsUpdate(newSettings.system)
+  }
+  if (isAssistantSettingUpdated(assistantSettings, newSettings.assistant)) {
+    handleAssistantSettingsUpdate(newSettings.assistant)
   }
   if (settings.system.backgroundPath !== newSettings.system.backgroundPath) {
     updateBackground()

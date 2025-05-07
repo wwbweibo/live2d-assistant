@@ -1,7 +1,7 @@
 import requests
 import re
 from bs4 import BeautifulSoup
-from llm_adapters import LLMAdapter
+from openai_adapter import OpenAIAdapter as LLMAdapter
 from utils.selenium import WebDriverManager
 from concurrent.futures import ThreadPoolExecutor
 import json

@@ -17,3 +17,6 @@ tools/
 __pycache__/
 
 .venv/
+venv/
+
+.vscode/

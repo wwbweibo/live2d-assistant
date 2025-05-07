@@ -1,7 +1,11 @@
 <template>
   <div class="chat-container">
     <div class="chat-messages">
-      <ChatMessage v-for="message in messages" :key="message.id" :username="message.username" :message="message.message"
+      <ChatMessage v-for="message in messages" 
+        :key="message.id" 
+        :username="message.username" 
+        :message="message.message"
+        :thinking="message.thinking"
         :timestamp="message.timestamp" />
       <div v-if="isLoading" class="loading-message">
         <div class="loading-dots">
@@ -31,9 +35,11 @@
 
 <script>
 import ChatMessage from './chat_message.vue';
-import { ElSwitch, ElInput, ElIcon } from 'element-plus'
+import { ElSwitch, ElInput, ElIcon, messageDefaults } from 'element-plus'
 import { Hide, View, Search } from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+import { fetchEventData } from 'fetch-sse';
+import { th } from 'element-plus/es/locales.mjs';
 
 export default {
   name: 'ChatModal',
@@ -90,49 +96,58 @@ export default {
         this.sendMessageToOllama(chat_history)
       }
     },
-    sendMessageToOllama(messages) {
+    async sendMessageToOllama(messages) {
       this.isLoading = true
-      fetch(this.ollama_host + '/api/chat', {
+      // 先往messages中添加一个loading的消息
+      this.messages.push({
+        id: this.messages.length + 1,
+        username: this.assistant_name,
+        thinking: '',
+        message: '',
+        timestamp: new Date().toLocaleString()
+      })
+      let message = ''
+      let isThinking = false
+      let thinking = ''
+      await fetchEventData(this.ollama_host + '/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
+        data: {
           model: this.model,
           messages: messages,
           stream: false,
           tts_enabled: this.assistantSettings.ttsEnabled,
           web_search: this.webSearchEnabled
-        })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.message) {
-            let message = data.message;
-            // 针对deepseek的处理，deepseek返回的响应中是一个json对象，判断message是否为json对象
-            if (typeof message === 'object') {
-              message = message['content']
-              // 移除 <think> 和 </think>之间的内容
-              message = message.replace(/<think>.*?<\/think>/gs, '')
-            }
-            this.messages.push({
-              id: this.messages.length + 1,
-              username: this.assistant_name,
-              message: message,
-              timestamp: new Date().toLocaleString()
-            })
-          }
-          if (data.wav_data) {
-            this.playAudio(data.wav_data)
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error)
-        })
-        .finally(() => {
-          // 无论成功失败都关闭loading状态
+        },
+        onMessage: (event) => {
           this.isLoading = false
-        })
+          console.log(event)
+          const data = JSON.parse(event.data)
+          if (data.type === 'text') {
+            if (data.content === '<think>' || isThinking) {
+              // 正在输出thinking的内容
+              if (data.content === '</think>') {
+                isThinking = false
+                return
+              }
+              isThinking = true
+              thinking = (thinking + data.content).replace('<think>', '').replace('</think>', '')
+              this.messages[this.messages.length - 1].thinking = thinking
+              return
+            } else {
+              message += data.content
+              this.messages[this.messages.length - 1].message = message
+            }
+          }
+        }
+      }).then(() => {
+        this.isLoading = false
+      }).catch((error) => {
+        console.error('Error:', error)
+        this.isLoading = false
+      })
     },
     async playAudio(wav_data) {
       for (let i = 0; i < wav_data.length; i++) {

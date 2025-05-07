@@ -1,5 +1,5 @@
 from .search_engine import BaseSearchEngine, SearchResultItem
-from llm_adapters import LLMAdapter
+from openai_adapter import OpenAIAdapter as LLMAdapter
 from utils.selenium import WebDriverManager
 from bs4 import BeautifulSoup
 
