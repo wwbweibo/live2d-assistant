@@ -1,5 +1,5 @@
-from typing import Optional, abstractmethod,  Literal
-from typing_extensions import overload
+from typing import Optional, abstractmethod,  Literal, AsyncGenerator, overload
+# from typing_extensions import overload
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -7,8 +7,8 @@ from mcp.client.sse import sse_client
 from mcp.types import CallToolResult
 from chat_response import ChatResponse
 from openai_adapter import OpenAIAdapter
-from typing import AsyncGenerator
 import logging
+import json
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -33,23 +33,23 @@ class MCPClientConfig(BaseModel):
     llm: LLMConfig
 
 class Client:
-    __config: MCPServerConfig
-    __session: Optional[ClientSession] = None
-    __exit_stack: AsyncExitStack
-    __server_name: str
+    config: MCPServerConfig
+    session: Optional[ClientSession] = None
+    exit_stack: AsyncExitStack
+    server_name: str
 
     def __init__(self, config: MCPServerConfig):
-        self.__config = config
-        self.__session: Optional[ClientSession] = None
-        self.__exit_stack = AsyncExitStack()
-        self.__server_name = config.name
+        self.config = config
+        self.session: Optional[ClientSession] = None
+        self.exit_stack = AsyncExitStack()
+        self.server_name = config.name
     
     @abstractmethod
     async def connect(self):
         ...
 
     async def list_tools(self):
-        response = await self.__session.list_tools()
+        response = await self.session.list_tools()
         return [
             {
                 "type": "function",
@@ -58,28 +58,30 @@ class Client:
                     "description": tool.description,
                     "parameters": tool.inputSchema,
                 },
-                "server_name": self.__server_name
+                "server_name": self.server_name
             }
             for tool in response.tools
         ]
 
-    async def call(self, tool_name: str, args: dict):
-        return await self.__session.call_tool(tool_name, args)
+    async def call(self, tool_name: str, args: dict | str):
+        if isinstance(args, str):
+            args = json.loads(args)
+        return await self.session.call_tool(tool_name, args)
 
 class SSEClient(Client):
     def __init__(self, config: MCPServerConfig):
         super().__init__(config)
 
     async def connect(self):
-        if not self.__config.url:
+        if not self.config.url:
             raise ValueError("url is required")
-        url = self.__config.url
-        sse_transport = await self.__exit_stack.enter_async_context(sse_client(url))
-        self.__stdio, self.__write = sse_transport
-        self.__session = await self.__exit_stack.enter_async_context(ClientSession(self.__stdio, self.__write))
-        await self.__session.initialize()
+        url = self.config.url
+        sse_transport = await self.exit_stack.enter_async_context(sse_client(url))
+        self.stdio, self.write = sse_transport
+        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+        await self.session.initialize()
         # List available tools
-        response = await self.__session.list_tools()
+        response = await self.session.list_tools()
         tools = response.tools
         logger.info(f"Connected to server with tools: {[tool.name for tool in tools]}")
 
@@ -88,23 +90,23 @@ class STDIOClient(Client):
         super().__init__(config)
 
     async def connect(self):
-        if not self.__config.command:
+        if not self.config.command:
             raise ValueError("command is required")
         
-        command = self.__config.command
-        args = self.__config.args
-        env = self.__config.env
+        command = self.config.command
+        args = self.config.args
+        env = self.config.env
         server_params = StdioServerParameters(
             command=command,
             args=args,
             env=env
         )
-        stdio_transport = await self.__exit_stack.enter_async_context(stdio_client(server_params))        
-        self.__stdio, self.__write = stdio_transport
-        self.__session = await self.__exit_stack.enter_async_context(ClientSession(self.__stdio, self.__write))
-        await self.__session.initialize()
+        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))        
+        self.stdio, self.write = stdio_transport
+        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+        await self.session.initialize()
         # List available tools
-        response = await self.__session.list_tools()
+        response = await self.session.list_tools()
         tools = response.tools
         logger.info(f"Connected to server with tools: {[tool.name for tool in tools]}")
 
@@ -127,7 +129,7 @@ class MCPClient(Client):
             elif server.transport == "sse":
                 client = SSEClient(server)
                 await client.connect()
-                self.__clients[server["name"]] = client
+                self.__clients[server.name] = client
             else:
                 raise ValueError("Invalid transport")
     
@@ -140,7 +142,7 @@ class MCPClient(Client):
             messages = messages + [ message for message in history]
         messages.append({"role": "user", "content": query})
         tools, tool_name2server_name = await self.list_all_tools()
-        response: ChatResponse = await self.__chat(model=model, messages=messages, tools=tools)
+        response: ChatResponse = await self.chat(model=model, messages=messages, tools=tools, stream=False)
         logger.info(f"Response: {response}")
         while response.tool_calls:
             # 只要还有工具调用，就继续调用工具
@@ -148,7 +150,7 @@ class MCPClient(Client):
                 tool_response = await self.__call_tool(tool_name2server_name, tool_call.name, tool_call.arguments, tool_call.id)
                 messages.append(self.__llm_adapter.tool_call_process(response, tool_call))
                 messages.append(tool_response)
-            response: ChatResponse = await self.__chat(model=model, messages=messages, tools=tools)
+            response: ChatResponse = await self.chat(model=model, messages=messages, tools=tools, stream=False)
         history = messages[1:]
         history.append({"role": "assistant", "content": response.content})
         return response.content, history
@@ -162,8 +164,8 @@ class MCPClient(Client):
             messages = messages + [ message for message in history]
         messages.append({"role": "user", "content": query})
         tools, tool_name2server_name = await self.list_all_tools()
-        response = await self.__chat(model=model, messages=messages, tools=tools, stream=True)
-        async for chunk in response:
+        resp = await self.chat(model, messages, tools, stream=True)
+        async for chunk in resp:
             if chunk.tool_calls:
                 # 处理工具调用
                 for tool_call in chunk.tool_calls:
@@ -171,7 +173,8 @@ class MCPClient(Client):
                     messages.append(self.__llm_adapter.tool_call_process(chunk, tool_call))
                     messages.append(tool_response)
                 # 继续流式处理
-                async for next_chunk in self.__chat(model=model, messages=messages, tools=tools, stream=True):
+                resp = await self.chat(model, messages, tools, stream=True)
+                async for next_chunk in resp:
                     yield next_chunk.content
             else:
                 yield chunk.content
@@ -184,15 +187,16 @@ class MCPClient(Client):
         return {"role": "tool", "content": response_content, "tool_call_id": call_id}
     
     @overload
-    async def __chat(self, model: str, messages: list[dict], tools: list[dict], stream: Literal[True] = True) -> AsyncGenerator[ChatResponse, None]:
+    async def chat(self, model: str, messages: list[dict], tools: list[dict], stream: Literal[True] = True) -> AsyncGenerator[ChatResponse, None]:
         ...
 
     @overload
-    async def __chat(self, model: str, messages: list[dict], tools: list[dict], stream: Literal[False] | None = False) -> ChatResponse:
+    async def chat(self, model: str, messages: list[dict], tools: list[dict], stream: Literal[False] | None = False) -> ChatResponse:
         ...
 
-    async def __chat(self, model: str, messages: list[dict], tools: list[dict], stream: bool | None = False) -> ChatResponse | AsyncGenerator[ChatResponse, None]:
+    async def chat(self, model: str, messages: list[dict], tools: list[dict], stream: bool | None = False) -> ChatResponse | AsyncGenerator[ChatResponse, None]:
         logger.info(f"call LLM with messages:\n\t\t{"\n\t\t".join([f'{x["role"]}: {x["content"]} {x["tool_calls"] if "tool_calls" in x else ""}' for x in messages])}")
+        logger.info(f"is stream: {stream}")
         if stream:
             return self.__chat_stream(model, messages, tools)
         else:
@@ -201,10 +205,11 @@ class MCPClient(Client):
     async def __chat_stream(self, model: str, messages: list[dict], tools: list[dict]) -> AsyncGenerator[ChatResponse, None]:
         resp = await self.__llm_adapter.chat(model=model, messages=messages, tools=tools, stream=True)
         async for chunk in resp:
+            logger.info(f"chunk: {chunk}")
             yield chunk
 
     async def __chat_none_stream(self, model: str, messages: list[dict], tools: list[dict]) -> ChatResponse:
-        response: ChatResponse = await self.__llm_adapter.chat(model=model, messages=messages, tools=tools)
+        response: ChatResponse = await self.__llm_adapter.chat(model=model, messages=messages, tools=tools, stream=False)
         return response
 
     async def list_all_tools(self) -> tuple[list[dict], dict]:

@@ -1,9 +1,8 @@
 from openai import AsyncOpenAI
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Literal, overload
 from chat_response import ChatResponse, ToolCall
 import json
-from typing import Literal
-from typing_extensions import overload
+# from typing_extensions import overload
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,14 +36,21 @@ class OpenAIAdapter():
     
 
     async def _chat_stream(self, model: str, messages: list[dict], tools: list[dict]) -> AsyncGenerator[ChatResponse, None]:
-        response = await self.openai_client.chat.completions.create(model=model, messages=messages, tools=tools, stream=True)
-        async for chunk in response:
+        resp = await self.openai_client.chat.completions.create(model=model, messages=messages, tools=tools, stream=True)
+        async for chunk in resp:
             if len(chunk.choices) > 0:
                 yield ChatResponse(
                     model=chunk.model,
                     role=chunk.choices[0].delta.role,
                     content=chunk.choices[0].delta.content,
-                    tool_calls=chunk.choices[0].delta.tool_calls,
+                    tool_calls=[
+                        ToolCall(
+                            id=tool_call.id, 
+                            name=tool_call.function.name, 
+                            arguments=tool_call.function.arguments
+                        ) 
+                        for tool_call in chunk.choices[0].delta.tool_calls
+                    ] if chunk.choices[0].delta.tool_calls else None
                 )
             # else:
             #     yield ChatResponse(

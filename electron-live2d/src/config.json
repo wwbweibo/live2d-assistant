@@ -22,9 +22,9 @@
         },
         "mcp_servers": [
             {
-                "name": "mcp-server-1",
+                "name": "music-player",
                 "transport": "sse",
-                "url": "http://127.0.0.1:8001/sse"
+                "url": "http://127.0.0.1:8000/sse"
             }
         ]
     }

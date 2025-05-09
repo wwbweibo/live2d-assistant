@@ -92,7 +92,7 @@ async def stream_chat_response(
         
         # 流式处理查询
         async for chunk in mcp_client.stream_process_query(request.model, request.messages[-1]['content']):
-            logger.info(f"chunk: {chunk}")
+            logger.info(f"stream_chat_response: {chunk}")
             yield f"data: {json.dumps({'type': 'text', 'content': chunk})}\n\n"
             await asyncio.sleep(0)  # 让出控制权给其他协程
         
