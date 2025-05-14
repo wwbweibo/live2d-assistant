@@ -1,7 +1,7 @@
-from typing import Optional, abstractmethod,  Literal, AsyncGenerator, overload
+from typing import Optional, abstractmethod,  Literal, AsyncGenerator, overload, Any
 # from typing_extensions import overload
 from contextlib import AsyncExitStack
-from mcp import ClientSession, StdioServerParameters
+from mcp import ClientSession, StdioServerParameters, ListToolsResult
 from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
 from mcp.types import CallToolResult
@@ -62,6 +62,9 @@ class Client:
             }
             for tool in response.tools
         ]
+    
+    async def list_tools_raw(self) -> ListToolsResult:
+        return await self.session.list_tools()
 
     async def call(self, tool_name: str, args: dict | str):
         if isinstance(args, str):
@@ -218,3 +221,9 @@ class MCPClient(Client):
             tools.extend(await client.list_tools())
         tool_name2server_name = {tool["function"]["name"]: tool["server_name"] for tool in tools}
         return tools, tool_name2server_name
+
+    async def list_tools(self, name: str) -> ListToolsResult:
+        return await self.__clients[name].list_tools_raw()
+    
+    async def get_client_session(self, name: str) -> ClientSession:
+        return self.__clients[name].session

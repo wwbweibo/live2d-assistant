@@ -5,51 +5,57 @@
             <input v-model="settings.serverUrl" type="text" @change="updateSettings">
         </div>
         <div class="setting-item">
-            <label>是否开启Debug：</label>
-            <el-switch v-model="settings.debugEnabled" @change="updateSettings"></el-switch>
-        </div>
-        <div class="setting-item">
             <label>背景图片：</label>
             <div class="setting-control">
                 <input v-model="settings.backgroundPath" type="text" @change="updateSettings">
-                <button class="reset-button" @click="resetBackground">重置</button>
+                <button class="reset-button" @click="">重置</button>
             </div>
+        </div>
+        <!-- 助手设置 -->
+        <div class="setting-item">
+            <label>助手名称：</label>
+            <input v-model="settings.assistantSettings.assistantName" type="text" @change="updateSettings">
+        </div>
+        <div class="setting-item">
+      <div class="setting-header">
+        <el-tooltip content="系统提示词，用于设置助手的默认行为和风格。" placement="top">
+          <template #content>
+            <div>系统提示词，用于设置助手的默认行为和风格。</div>
+          </template>
+          <el-icon>
+            <question-filled />
+          </el-icon>
+        </el-tooltip>
+        <label>系统提示词：</label>
+            </div>
+            <el-input type="textarea" class="system-prompt-textarea" v-model="settings.assistantSettings.sysPrompt"
+                placeholder="请输入系统提示词" @change="updateSettings">
+            </el-input>
         </div>
     </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ElSwitch } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+import { PropType, ref } from 'vue';
+import { SystemSettings } from '../models/message.vue';
 
-export default {
-    name: 'SystemSettings',
-    components: {
-        ElSwitch
+const props = defineProps({
+    systemSettings: {
+        type: Object as PropType<SystemSettings>,
+        required: true
     },
-    props: {
-        systemSettings: {
-            type: Object,
-            required: true
-        },
-        onChange: {
-            type: Function,
-            required: true
-        }
-    },
-    data() {
-        return {
-            settings: {
-                serverUrl: this.systemSettings.serverUrl || 'http://localhost:8000',
-                debugEnabled: this.systemSettings.debugEnabled || false
-            }
-        }
-    },
-    methods: {
-        updateSettings() {
-            this.onChange(this.settings)
-        }
+    onChange: {
+        type: Function,
+        required: true
     }
+})
+
+const settings = ref<SystemSettings>(props.systemSettings)
+const updateSettings = () => {
+    props.onChange(settings.value)
 }
 </script>
 

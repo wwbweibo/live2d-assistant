@@ -1,32 +1,37 @@
 <template>
   <div class="home">
     <canvas ref="live2dCanvas"></canvas>
-    <!-- 设置按钮 -->
-    <div v-if="!showSettings && !showChat">
-      <div class="settings-button" @click="showSettings = true">
-        <i class="fas fa-cog"></i>
+    <div class="ai-assistant-overlay">
+      <!-- 左右分栏，左侧27%，右侧73%，左侧展示对话列表，设置，聊天，右侧展示对话内容 -->
+      <div class="ai-assistant-container-left">
+        <div class="assistant-title">
+          <div class="assistant-title-text">
+            AI助手
+          </div>
+        </div>
+        <div class="conversation-list">
+          <Conversations :items="conversationItems" />
+        </div>
+        <!-- 分割线 -->
+        <div class="assistant-setting-divider"></div>
+        <div class="assistant-setting" @click="showSettings = true">
+          <div class="assistant-setting-item">
+            <div class="assistant-setting-item-icon">
+              <i class="fas fa-cog"></i>
+            </div>
+            <div class="assistant-setting-item-text">
+              设置
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ai-assistant-container-right">
+        <ChatPage :systemSettings="systemSettings" />
       </div>
     </div>
-    <div v-if="!showSettings && !showChat">
-      <div class="chat-button" @click="showChat = true">
-        <i class="fas fa-comment"></i>
-      </div>
-    </div>
-    <!-- 设置弹窗 -->
-    <div class="settings-modal" v-if="showSettings">
-      <div class="button-group">
-        <button class="save-button" @click="saveSettings">保存设置</button>
-        <button class="close-button" @click="showSettings = false">关闭</button>
-      </div>
-      <SettingModal :settings="settings" :updateSettings="handleSettingsUpdate" />
-    </div>
-    <!-- 聊天弹窗 -->
-    <div class="chat-modal" v-if="showChat">
-      <div class="chat-header">
-        <button class="close-button" @click="showChat = false">关闭</button>
-      </div>
-      <ChatModal :assistantSettings="assistantSettings" />
-    </div>
+    <a-modal :visible="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings">
+      <SettingModal :settings="systemSettings" :updateSettings="handleSystemSettingsUpdate" />
+    </a-modal>
   </div>
 </template>
 
@@ -36,8 +41,15 @@ import { ref, onMounted, onUnmounted, reactive } from 'vue'
 import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4, MotionPreloadStrategy } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
-import ChatModal from '../components/chat_modal.vue'
+
+import { Conversations } from 'ant-design-x-vue'
+import type { ConversationsProps } from 'ant-design-x-vue'
+
+import { Modal as AModal, Button as AButton } from 'ant-design-vue'
+
 import SettingModal from '../components/setting_modal.vue'
+import ChatPage from '../components/chat.vue'
+import { Live2DSettings, SystemSettings } from '../models/message.vue'
 
 // 注册 Ticker
 Live2DModelCubism4.registerTicker(PIXI.Ticker)
@@ -46,60 +58,37 @@ Live2DModelCubism2.registerTicker(PIXI.Ticker)
 const live2dCanvas = ref<HTMLCanvasElement | null>(null)
 let app: PIXI.Application | null = null
 let model: any = null
-
 const showSettings = ref(false)
-const showChat = ref(false)
 const STORAGE_KEY = 'live2d-viewer-settings'
 
-
-// 默认设置
-const defaultSettings = {
-  modelPath: 'assets/models/Senko_Normals/senko.model3.json',
-  offsetX: 0,
-  offsetY: 0,
-  scale: 0.5,
-  backgroundPath: 'assets/background.jpg'
-}
+const conversationItems: ConversationsProps['items'] = Array.from({ length: 4 }).map((_, index) => ({
+  key: `item${index + 1}`,
+  label: `Conversation Item ${index + 1}`,
+  group: 'Today'
+}));
 
 const systemSettings = reactive({
   serverUrl: 'http://localhost:8000',
   debugEnabled: false,
-  backgroundPath: 'assets/background.jpg'
-})
-
-const modelSettings = reactive({
-  modelPath: 'assets/models/Senko_Normals/senko.model3.json',
-  offsetX: 0,
-  offsetY: 0,
-  scale: 0.5,
-  backgroundPath: 'assets/background.jpg'
-})
-
-// 助手设置
-const assistantSettings = reactive({
-  name: 'Senko',
-  model: 'qwen2.5',
-  ollamaHost: 'http://localhost:11434',
-  ttsEnabled: false
-})
-
-
-const settings = reactive({
-  'system': systemSettings,
-  'model': modelSettings,
-  'assistant': assistantSettings,
+  backgroundPath: 'assets/background.jpg',
+  assistantSettings: {
+    assistantName: 'Senko',
+    sysPrompt: undefined,
+    model: 'qwen2.5',
+  },
+  live2DSettings: {
+    modelPath: 'assets/models/Senko_Normals/senko.model3.json',
+    offsetX: 0,
+    offsetY: 0,
+    scale: 0.5
+  }
 })
 
 // 保存设置到 localStorage
 const saveSettings = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    systemSettings,
-    modelSettings,
-    assistantSettings
+    systemSettings
   }))
-  // 调用设置接口
-
-  // 提示保存成功
   ElMessage.success('设置已保存')
 }
 
@@ -108,79 +97,25 @@ const loadSettings = () => {
   const savedSettings = localStorage.getItem(STORAGE_KEY)
   if (savedSettings) {
     const parsed = JSON.parse(savedSettings)
-    Object.assign(modelSettings, parsed.modelSettings)
-    Object.assign(assistantSettings, parsed.assistantSettings)
     Object.assign(systemSettings, parsed.systemSettings)
   }
 }
 
-// 处理模型设置更新
-const handleModelSettingsUpdate = (newSettings: any) => {
-  console.log('handleModelSettingsUpdate', newSettings)
-  // 检查是否改变了模型路径
-  const modelPathChanged = modelSettings.modelPath !== newSettings.modelPath
-  Object.assign(modelSettings, newSettings)
-  // 如果模型路径改变，需要重新加载模型
-  if (modelPathChanged) {
+const handleSystemSettingsUpdate = (newSettings: SystemSettings) => {
+  if (systemSettings.live2DSettings.modelPath !== newSettings.live2DSettings.modelPath) {
     updateModel()
-  } else {
-    // 否则只更新现有模型的参数
-    updatePosition()
-    updateScale()
   }
-  // 更新背景
   updateBackground()
-}
-
-const handleSystemSettingsUpdate = (newSettings: any) => {
+  updatePosition()
+  updateScale()
   Object.assign(systemSettings, newSettings)
-}
-
-const handleAssistantSettingsUpdate = (newSettings: any) => {
-  Object.assign(assistantSettings, newSettings)
-}
-
-const isModelSettingUpdated = (oldSetting, newSetting) => {
-  return oldSetting.modelPath !== newSetting.modelPath ||
-    oldSetting.offsetX !== newSetting.offsetX ||
-    oldSetting.offsetY !== newSetting.offsetY ||
-    oldSetting.scale !== newSetting.scale
-}
-
-const isSystemSettingUpdated = (oldSetting, newSetting) => {
-  return oldSetting.serverUrl !== newSetting.serverUrl ||
-    oldSetting.debugEnabled !== newSetting.debugEnabled ||
-    oldSetting.backgroundPath !== newSetting.backgroundPath
-}
-
-const isAssistantSettingUpdated = (oldSetting, newSetting) => {
-  return oldSetting.name !== newSetting.name ||
-    oldSetting.model !== newSetting.model ||
-    oldSetting.ollamaHost !== newSetting.ollamaHost ||
-    oldSetting.ttsEnabled !== newSetting.ttsEnabled
-}
-
-const handleSettingsUpdate = (newSettings: any) => {
-  if (isModelSettingUpdated(modelSettings, newSettings.model)) {
-    handleModelSettingsUpdate(newSettings.model)
-  }
-  if (isSystemSettingUpdated(systemSettings, newSettings.system)) {
-    handleSystemSettingsUpdate(newSettings.system)
-  }
-  if (isAssistantSettingUpdated(assistantSettings, newSettings.assistant)) {
-    handleAssistantSettingsUpdate(newSettings.assistant)
-  }
-  if (settings.system.backgroundPath !== newSettings.system.backgroundPath) {
-    updateBackground()
-  }
-  Object.assign(settings, newSettings)
 }
 
 // 更新模型位置
 const updatePosition = () => {
   if (model && app) {
-    const xOffset = (app.renderer.width * Number(modelSettings.offsetX)) / 100
-    const yOffset = (app.renderer.height * Number(modelSettings.offsetY)) / 100
+    const xOffset = (app.renderer.width * Number(systemSettings.live2DSettings.offsetX)) / 100
+    const yOffset = (app.renderer.height * Number(systemSettings.live2DSettings.offsetY)) / 100
     model.x = app.renderer.width / 2 + xOffset
     model.y = app.renderer.height * 2 + yOffset
   }
@@ -189,7 +124,7 @@ const updatePosition = () => {
 // 更新模型缩放
 const updateScale = () => {
   if (model) {
-    model.scale.set(Number(modelSettings.scale))
+    model.scale.set(Number(systemSettings.live2DSettings.scale))
   }
 }
 
@@ -197,14 +132,13 @@ const updateScale = () => {
 const updateBackground = () => {
   const homeElement = document.querySelector('.home') as HTMLElement
   if (homeElement) {
-    homeElement.style.backgroundImage = `url('${settings.system.backgroundPath}')`
+    homeElement.style.backgroundImage = `url('${systemSettings.backgroundPath}')`
   }
 }
 
 // 更新模型
 const updateModel = async () => {
   if (!app) return
-
   try {
     // 如果存在旧模型，先移除
     if (model) {
@@ -212,16 +146,16 @@ const updateModel = async () => {
       model.destroy()
     }
 
-    const isModel3 = modelSettings.modelPath.endsWith('.model3.json')
+    const isModel3 = systemSettings.live2DSettings.modelPath.endsWith('.model3.json')
     const ModelClass = isModel3 ? Live2DModelCubism4 : Live2DModelCubism2
-    const motions = await fetch(modelSettings.modelPath).
+    const motions = await fetch(systemSettings.live2DSettings.modelPath).
       then(async resp => {
         const content = await resp.json();
         if (content['FileReferences']['Motions'] !== undefined) {
           return content['FileReferences']['Motions']
         }
       })
-    model = await ModelClass.from(modelSettings.modelPath, {
+    model = await ModelClass.from(systemSettings.live2DSettings.modelPath, {
       motionPreload: MotionPreloadStrategy.IDLE,
       autoInteract: false,
       autoUpdate: true,
@@ -366,8 +300,6 @@ canvas {
   background: #3aa876;
 }
 
-
-
 .button-group {
   display: flex;
   gap: 10px;
@@ -403,5 +335,95 @@ canvas {
 
 .close-button:hover {
   background: #3aa876;
+}
+
+.ai-assistant-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+}
+
+.ai-assistant-container-left {
+  width: 20%;
+  height: 100%;
+  background: rgba(200, 200, 200, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+.assistant-title {
+  width: 100%;
+  height: 7%;
+  /* background: rgba(255, 255, 255, 0); */
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assistant-title-text {
+  font-size: 24px;
+  font-weight: bold;
+  font-family: 'Arial', sans-serif;
+}
+
+.conversation-list {
+  width: 100%;
+  height: 100%;
+  /* background: rgba(255, 255, 255, 0); */
+  overflow-y: auto;
+}
+
+.assistant-setting-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.assistant-setting-item {
+  width: 100%;
+  height: 70px;
+  padding-left: 20px;
+  padding-bottom: 10px;
+  /* background: rgba(255, 255, 255, 0); */
+  display: flex;
+  align-items: center;
+  justify-content: start;
+}
+
+.assistant-setting-item-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  font-family: 'Arial', sans-serif;
+}
+
+.assistant-setting-item-text {
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'Arial', sans-serif;
+}
+
+.assistant-setting {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: start;
+}
+
+
+.ai-assistant-container-right {
+  width:80%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
 }
 </style>

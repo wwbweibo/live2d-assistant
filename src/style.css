@@ -7,3 +7,7 @@
   body {
     font-family: Arial, sans-serif;
   }
+
+  .ant-bubble-content-filled {
+    background-color: #fff !important; 
+  }

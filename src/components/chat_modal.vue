@@ -117,7 +117,6 @@ export default {
         data: {
           model: this.model,
           messages: messages,
-          stream: false,
           tts_enabled: this.assistantSettings.ttsEnabled,
           web_search: this.webSearchEnabled
         },
@@ -140,6 +139,8 @@ export default {
               message += data.content
               this.messages[this.messages.length - 1].message = message
             }
+          } else if (data.type === 'audio' && this.assistantSettings.ttsEnabled) {
+            this.playAudio([data.content])
           }
         }
       }).then(() => {

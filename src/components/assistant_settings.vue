@@ -2,7 +2,7 @@
   <div class="settings-section">
     <div class="setting-item">
       <label>助手名称：</label>
-      <input v-model="settings.name" type="text" @change="updateSettings">
+      <input v-model="settings.assistantName" type="text" @change="updateSettings">
     </div>
 
     <div class="setting-item">
@@ -10,11 +10,6 @@
       <select v-model="settings.model" @change="updateSettings">
         <option v-for="item in models" :value="item">{{ item }}</option>
       </select>
-    </div>
-
-    <div class="setting-item">
-      <label>Ollama地址：</label>
-      <input v-model="settings.ollamaHost" type="text" @change="updateSettings">
     </div>
     <div class="setting-item">
       <div class="setting-header">
@@ -28,69 +23,79 @@
         </el-tooltip>
         <label>系统提示词：</label>
       </div>
-      <el-input type="textarea" rows="5" class="system-prompt-textarea" v-model="settings.systemPrompt"
-        placeholder="请输入系统提示词" @change="updateSettings"></el-input>
+      <el-input type="textarea" class="system-prompt-textarea" v-model="settings.sysPrompt"
+        placeholder="请输入系统提示词" @change="updateSettings">
+      </el-input>
     </div>
-    <div class="setting-item">
+    <!-- <div class="setting-item">
       <label>是否启用TTS：</label>
       <el-switch v-model="settings.ttsEnabled" @change="updateSettings"></el-switch>
-    </div>
+    </div> -->
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ElTooltip, ElInput, ElSwitch, ElIcon } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
+import { PropType,  ref } from 'vue';
+import { LLMSettings } from '../models/message.vue';
 
-export default {
-  name: 'AssistantSettings',
-  components: {
-    ElTooltip,
-    ElInput,
-    ElSwitch,
-    ElIcon,
-    QuestionFilled
+const props = defineProps({
+  assistantSettings: {
+    type: Object as PropType<LLMSettings>,
+    required: true
   },
-  props: {
-    assistantSettings: {
-      type: Object,
-      required: true
-    },
-    onChange: {
-      type: Function,
-      required: true
-    }
-  },
-  data() {
-    return {
-      settings: { ...this.assistantSettings },
-      models: [],
-    }
-  },
-  methods: {
-    updateSettings() {
-      console.log(this.settings)
-      this.onChange(this.settings)
-    },
-    getAvailableModels() {
-      fetch(this.assistantSettings.ollamaHost + '/api/tags')
-        .then(response => response.json())
-        .then(data => {
-          console.log(data['models'])
-          data['models'].map(model => {
-            this.models.push(model['name'])
-          })
-        })
-        .catch(error => {
-          console.error('Error fetching available models:', error)
-        })
-    }
-  },
-  mounted() {
-    this.getAvailableModels()
+  onChange: {
+    type: Function,
+    required: true
   }
+})
+
+const settings = ref<LLMSettings>(props.assistantSettings)
+const models = ref<string[]>([])
+
+const updateSettings = () => {
+  console.log(settings.value)
+  props.onChange(settings.value)
 }
+
+// const getAvailableModels = () => {
+//   fetch(settings.value + '/api/tags')
+//     .then(response => response.json())
+//     .then(data => {
+//       console.log(data['models'])
+//     })
+// }
+
+// export default {
+//   name: 'AssistantSettings',
+//   components: {
+//     ElTooltip,
+//     ElInput,
+//     ElSwitch,
+//     ElIcon,
+//     QuestionFilled
+//   },
+//   methods: {
+//     getAvailableModels() {
+//       fetch(this.assistantSettings.ollamaHost + '/api/tags')
+//         .then(response => response.json())
+//         .then(data => {
+//           console.log(data['models'])
+//           data['models'].map(model => {
+//             this.models.push(model['name'])
+//           })
+//         })
+//         .catch(error => {
+//           console.error('Error fetching available models:', error)
+//         })
+//     }
+//   },
+//   mounted() {
+//     this.getAvailableModels()
+//   }
+// }
 </script>
 
 <style scoped>

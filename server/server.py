@@ -24,14 +24,15 @@ async def lifespan(app: FastAPI):
             base_url=config.server.llm.base_url,
             sys_prompt=config.server.llm.sys_prompt
         ),
-        mcp_servers=[MCPServerConfig(
-            name=server.name,
-            transport=server.transport,
-            url=server.url,
-            command=server.command,
-            args=server.args,
-            env=server.env
-        ) for server in config.server.mcp_servers]
+        # mcp_servers=[MCPServerConfig(
+        #     name=server.name,
+        #     transport=server.transport,
+        #     url=server.url,
+        #     command=server.command,
+        #     args=server.args,
+        #     env=server.env
+        # ) for server in config.server.mcp_servers]
+        mcp_servers=[]
     ))
     await mcp_client.connect_to_servers()
     tools = await mcp_client.list_all_tools()
