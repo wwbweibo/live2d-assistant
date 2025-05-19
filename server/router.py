@@ -82,10 +82,10 @@ async def stream_chat_response(
         # 流式处理查询
         async for chunk in get_mcp_client().stream_process_query(request.model, request.messages[-1]['content'], request.messages[:-1]):
             logger.info(f"stream_chat_response: {chunk}")
-            yield f"data: {json.dumps({'type': 'text', 'content': chunk})}\n\n"
+            yield f"data: {json.dumps(chunk)}\n\n"
             await asyncio.sleep(0)  # 让出控制权给其他协程
         
-        # 如果需要TTS，生成音频数据
+        # 如果需要TTS，生成音频数据c
         if request.tts_enabled:
             tts_server = init_tts_if_needed(config, tts_server)
             wav_data = tts_server.tts(chunk)
@@ -98,6 +98,8 @@ async def stream_chat_response(
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Error in stream_chat_response: {str(e)}")
         yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 

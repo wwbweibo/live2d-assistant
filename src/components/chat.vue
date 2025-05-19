@@ -2,7 +2,8 @@
   <div class="chat-container">
     <div class="messages" ref="messagesRef">
       <Flex gap="middle" vertical>
-        <Bubble :placement="message.role === 'assistant' ? 'start' : 'end'"
+        <BubbleList :roles="roles" :items="message2BubbleListItem()" />
+        <!-- <Bubble :placement="message.role === 'assistant' ? 'start' : 'end'"
           :avatar="{ icon: h(UserOutlined), style: fooAvatar }" 
           :header="message.role === 'assistant' ? systemSettings?.assistantSettings.assistantName : '用户'" 
           class="message"
@@ -11,7 +12,7 @@
           :messageRender="renderMarkdown"
           v-model:value="value"
           :loading="message.loading"
-          v-for="message in localConversation.messages"  />
+          v-for="message in localConversation.messages"  /> -->
       </Flex>
     </div>
     <!-- <div class="chat-sender"> -->
@@ -22,8 +23,8 @@
 
 <script setup lang="ts">
 import { Flex, Typography } from 'ant-design-vue';
-import { Sender, Bubble } from 'ant-design-x-vue';
-import type { BubbleProps } from 'ant-design-x-vue';
+import { Sender, Bubble, BubbleList, Prompts } from 'ant-design-x-vue';
+import type { BubbleProps, BubbleListProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
@@ -33,7 +34,7 @@ import { fetchEventData } from 'fetch-sse';
 import markdownit from 'markdown-it';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, SystemSettings, ChatHistory, Conversation } from '../types/message';
-
+import ToolCall from './tool_call.vue';
 
 const md = markdownit({ html: true, breaks: true });
 
@@ -42,21 +43,45 @@ h(Typography, null, {
   default: () => h('div', { innerHTML: md.render(content) }),
 });
 
+const roles: BubbleListProps['roles'] = {
+  assistant: {
+    placement: 'start',
+    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    messageRender: (content) =>
+    h(Typography, null, {
+      default: () => h('div', { innerHTML: md.render(content) }),
+    }) 
+  },
+  tool: {
+    placement: 'start',
+    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    messageRender: (content) =>{
+      const tool_call = JSON.parse(content)[0]
+      console.log("tool_call", tool_call)
+      return h(ToolCall, {
+      function_name: tool_call.name,
+      function_args: tool_call.arguments,
+      response: tool_call.response
+    }) 
+    }
+  },
+  user: {
+    placement: 'end',
+    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+  },
+};
+
+const message2BubbleListItem = () => {
+  return localConversation.value.messages.map(msg => ({
+    key: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: msg.timestamp,
+    loading: msg.loading
+  }))
+} 
+
 const messagesRef = ref<HTMLDivElement>();
-
-const fooAvatar: CSSProperties = {
-  color: '#f56a00',
-  backgroundColor: '#fde3cf',
-};
-
-const barAvatar: CSSProperties = {
-  color: '#fff',
-  backgroundColor: '#87d068',
-};
-
-const hideAvatar: CSSProperties = {
-  visibility: 'hidden',
-};
 
 defineOptions();
 
@@ -85,8 +110,13 @@ const handleMessageChange = (newVal: Message[]) => {
     localConversation.value.messages = newVal
     localConversation.value.key = uuidv4().toString()
     localConversation.value.label = newVal[0].content
+    localConversation.value.updatedAt = new Date().getTime()
+    localConversation.value.createdAt = new Date().getTime()
+  } else if (localConversation.value.label === '' || localConversation.value.label === '新对话') {
+    localConversation.value.label = newVal[0].content
+    localConversation.value.updatedAt = new Date().getTime()
+    localConversation.value.createdAt = new Date().getTime()
   }
-  console.log('localConversation', localConversation.value)
   props.onNewMessage(localConversation.value)
 }
 
@@ -139,14 +169,17 @@ const sendMessage = async () => {
 }
 
 const sendMessageToOllama = async (messages: ChatHistory[]) => {
-  // 先往messages中添加一个loading的消息
-  localConversation.value.messages.push({
+  const waiting_massage = {
     id: localConversation.value.messages.length + 1,
     role: 'assistant',
     content: '',
     timestamp: new Date().toLocaleString(),
     loading: true
-  })
+  }
+  let text_cache_message: Message|null = null
+  // 先往messages中添加一个loading的消息
+  localConversation.value.messages.push(waiting_massage)
+  let waiting_removed = false
   let message = ''
   let isThinking = false
   let thinking = ''
@@ -171,7 +204,23 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
     onMessage: (event) => {
       // this.isLoading = false
       const data = JSON.parse(event!.data)
-      if (data.type === 'text') {
+      // 文本消息处理
+      if (data.type === 'text' && data.content !== '') {
+        if (!waiting_removed) {
+          // waiting_massage is always last one, remove last message
+          localConversation.value.messages.pop()
+          waiting_removed = true
+        }
+        if (text_cache_message === null) {
+          text_cache_message = {
+            id: localConversation.value.messages.length + 1,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date().toLocaleString(),
+            loading: false
+          }
+          localConversation.value.messages.push(text_cache_message)
+        }
         if (data.content === '<think>' || isThinking) {          // 正在输出thinking的内容
           if (data.content === '</think>') {
             isThinking = false
@@ -179,18 +228,34 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
           }
           isThinking = true
           thinking = (thinking + data.content).replace('<think>', '').replace('</think>', '')
-          localConversation.value.messages[localConversation.value.messages.length - 1].content = thinking
+          text_cache_message.content = thinking
           return
         } else {
           message += data.content
-          localConversation.value.messages[localConversation.value.messages.length - 1].content = message
+          text_cache_message.content = message
         }
-        if (localConversation.value.messages[localConversation.value.messages.length - 1].content.length > 0) {
-          localConversation.value.messages[localConversation.value.messages.length - 1].loading = false
+        localConversation.value.messages = [...localConversation.value.messages]
+      } else if (data.type === 'tool_calls' && data.content !== '') {
+        if (!waiting_removed) {
+          localConversation.value.messages.pop()
+          waiting_removed = true
         }
+        const content = JSON.stringify(data.content)
+        const message = {
+          id: localConversation.value.messages.length + 1,
+          role: 'tool',
+          content: content,
+          timestamp: new Date().toLocaleString(),
+          loading: false
+        }
+        localConversation.value.messages.push(message)
       }
     }
   }).then(() => {
+    localConversation.value.updatedAt = new Date().getTime()
+    if (localConversation.value.label === '新对话') {
+      localConversation.value.label = localConversation.value.messages[0].content as string
+    }
     props.onNewMessage(localConversation.value)
   })
 }

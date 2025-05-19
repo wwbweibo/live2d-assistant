@@ -20,7 +20,9 @@
           <Conversations 
           :items="conversationItems" 
           :active-key="selectedConversationKey"
-          :on-active-change="onSelectedConversationChange" />
+          :on-active-change="onSelectedConversationChange"
+          :menu="menuConfig"
+          :groupable="groupable" />
         </div>
         <!-- 分割线 -->
         <div class="assistant-setting-divider"></div>
@@ -52,12 +54,16 @@ import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4, MotionPreloadStrategy } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
 import { Conversations } from 'ant-design-x-vue'
-import { Modal as AModal, Button as AButton, message } from 'ant-design-vue'
+import type { ConversationsProps } from 'ant-design-x-vue'
+import { h } from 'vue'
+import { Modal as AModal, Button as AButton, message, Space } from 'ant-design-vue'
 import SettingModal from '../components/setting_modal.vue'
 import ChatPage from '../components/chat.vue'
 import { SystemSettings, Conversation } from '../types/message'
 import { updateConfig } from '../utils/requests'
 import { v4 as uuidv4 } from 'uuid'
+import { CommentOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+
 // 注册 Ticker
 Live2DModelCubism4.registerTicker(PIXI.Ticker)
 Live2DModelCubism2.registerTicker(PIXI.Ticker)
@@ -73,8 +79,9 @@ const currentConversation = ref<Conversation>({
   key: '',
   label: '新对话',
   messages: [],
-  createdAt: '',
-  updatedAt: ''
+  createdAt: 0,
+  updatedAt: 0,
+  group: undefined
 })
 const selectedConversationKey = ref<string>(currentConversation.value.key)
 
@@ -97,6 +104,41 @@ const systemSettings = reactive<SystemSettings>({
   }
 })
 
+// 处理对话列表分组
+const groupable: ConversationsProps['groupable'] = {
+  sort(a, b) {
+    console.log('sort', a, b)
+    if (a === b) return 0;
+    return a === 'Today' ? -1 : 1;
+  },
+  title: (group, { components: { GroupTitle } }) =>
+    group ? h(
+      GroupTitle,
+      null,
+      () => [h(Space, null, () => [h(CommentOutlined), h('span', null, group)])]
+    ) : h(GroupTitle),
+};
+
+// 处理对话列表菜单
+const menuConfig: ConversationsProps['menu'] = (conversation) => ({
+  items: [
+    {
+      label: '删除',
+      key: 'delete',
+      icon: h(DeleteOutlined),
+      danger: true,
+    },
+  ],
+  onClick: (menuInfo) => {
+    if (menuInfo.key === 'delete') {
+      conversationItems.value = conversationItems.value.filter(item => item.key !== conversation.key)
+      localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify({
+        conversationItems: conversationItems.value
+      }))
+    }
+  },
+});
+
 // 保存设置到 localStorage
 const saveSettings = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -107,7 +149,8 @@ const saveSettings = () => {
   updateConfig(systemSettings)
 }
 
-// 从 localStorage 加载设置
+// 数据加载 
+// 加载设置
 const loadSettings = () => {
   const savedSettings = localStorage.getItem(STORAGE_KEY)
   if (savedSettings) {
@@ -116,16 +159,46 @@ const loadSettings = () => {
   }
 }
 
+// 加载对话
 const loadConversations = () => {
   const savedConversations = localStorage.getItem(STORAGE_KEY_CONVERSATIONS)
   if (savedConversations) {
     const parsed = JSON.parse(savedConversations)
-    conversationItems.value = parsed.conversationItems
+    const conversations = parsed.conversationItems.map(item => {
+      // 分组为 今天， 7天内， 30天内， 30天前
+      const now = new Date().getTime()
+      const today = new Date().setHours(0, 0, 0, 0)
+      const diff = now - item.updatedAt
+      if (item.updatedAt > today) {
+        return {
+          ...item,
+          group: 'Today'
+        }
+      }
+      if (diff <= 7 * 24 * 60 * 60 * 1000) {
+        return {
+          ...item,
+          group: '7Days'
+        }
+      }
+      if (diff <= 30 * 24 * 60 * 60 * 1000) {
+        return {
+          ...item,
+          group: '30Days'
+        }
+      }
+      return {
+        ...item,
+        group: '30DaysAgo'
+      }
+    })
+    conversationItems.value = conversations
   }
 }
 
+
 const handleNewMessage = (conversation: Conversation) => {
-  console.log('get new message', conversation)
+  conversation.updatedAt = new Date().getTime()
   if (conversationItems.value.find(item => item.key === conversation.key)) {
     currentConversation.value = conversation
   } else {
@@ -136,8 +209,6 @@ const handleNewMessage = (conversation: Conversation) => {
   localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify({
     conversationItems: conversationItems.value
   }))
-  console.log('currentConversation', currentConversation.value)
-  console.log('conversationItems', conversationItems.value)
 }
 
 const handleSystemSettingsUpdate = (newSettings: SystemSettings) => {
@@ -155,8 +226,9 @@ const handleNewConversation = () => {
     key: uuidv4().toString(),
     label: '新对话',
     messages: [],
-    createdAt: new Date().toLocaleString(),
-    updatedAt: new Date().toLocaleString()
+    createdAt: new Date().getTime(),
+    updatedAt: new Date().getTime(),
+    group: "Today"
   }
   selectedConversationKey.value = currentConversation.value.key
   conversationItems.value.push(currentConversation.value)
@@ -166,16 +238,15 @@ const handleNewConversation = () => {
 }
 
 const onSelectedConversationChange = (key: string) => {
-  console.log('onSelectedConversationChange', key)
   selectedConversationKey.value = key
   currentConversation.value = conversationItems.value.find(item => item.key === key) || {
     key: '',
     label: '新对话',
     messages: [],
-    createdAt: '',
-    updatedAt: ''
+    createdAt: new Date().getTime(),
+    updatedAt: new Date().getTime(),
+    group: 'Today'
   }
-  console.log('currentConversation', currentConversation.value)
 }
 
 // 更新模型位置
@@ -227,7 +298,6 @@ const updateModel = async () => {
       autoInteract: false,
       autoUpdate: true,
     })
-    console.log(motions)
     if (motions) {
       // 添加交互，随机执行动作
       // motions 是一个对象，需要转换为数组
@@ -239,7 +309,6 @@ const updateModel = async () => {
       model.buttonMode = true
       model.on('pointerdown', () => {
         const randomMotion = motionList[Math.floor(Math.random() * motionList.length)]
-        console.log(randomMotion)
         model.motion(randomMotion)
       })
     }

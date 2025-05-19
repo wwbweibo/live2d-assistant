@@ -1,5 +1,4 @@
-from typing import Optional, abstractmethod,  Literal, AsyncGenerator, overload, Any
-# from typing_extensions import overload
+from typing import Optional, abstractmethod,  Literal, AsyncGenerator, overload
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters, ListToolsResult
 from mcp.client.stdio import stdio_client
@@ -181,14 +180,18 @@ class MCPClient:
                 logger.info(f"stream_process_query chunk: {chunk}")
                 if chunk.tool_calls:
                     # 处理工具调用
+                    tool_call_resp = []
                     for tool_call in chunk.tool_calls:
                         tool_response = await self.__call_tool(tool_name2server_name, tool_call.name, tool_call.arguments, tool_call.id)
                         messages.append(self.__llm_adapter.tool_call_process(chunk, tool_call))
                         messages.append(tool_response)
-                    # 有 tool_calls，跳出当前 async for，重新请求 chat
+                        call = tool_call.model_dump()
+                        call['response'] = tool_response['content']
+                        tool_call_resp.append(call)
+                    yield {"type": "tool_calls", "content": tool_call_resp}
                     break
                 else:
-                    yield chunk.content
+                    yield {"type": "text", "content": chunk.content}
             else:
                 # 没有 tool_calls，正常结束
                 break

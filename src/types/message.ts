@@ -61,8 +61,9 @@ interface Conversation {
     key: string;
     label: string;
     messages: Message[];
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number;
+    updatedAt: number;
+    group: string | undefined;
 }
 
 export type { Message, LLMSettings, ChatHistory, SystemSettings, Live2DSettings, MCPServer, MCPServerStatus, MCPServerTool, Conversation };
