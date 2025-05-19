@@ -1,11 +1,11 @@
 <template>
     <div class="settings-section">
         <div class="setting-item">
-            <label>服务器地址：</label>
+            <label>服务器地址</label>
             <input v-model="settings.serverUrl" type="text" @change="updateSettings">
         </div>
         <div class="setting-item">
-            <label>背景图片：</label>
+            <label>背景图片</label>
             <div class="setting-control">
                 <input v-model="settings.backgroundPath" type="text" @change="updateSettings">
                 <button class="reset-button" @click="">重置</button>
@@ -13,34 +13,72 @@
         </div>
         <!-- 助手设置 -->
         <div class="setting-item">
-            <label>助手名称：</label>
+            <label>助手名称</label>
             <input v-model="settings.assistantSettings.assistantName" type="text" @change="updateSettings">
         </div>
         <div class="setting-item">
-      <div class="setting-header">
-        <el-tooltip content="系统提示词，用于设置助手的默认行为和风格。" placement="top">
-          <template #content>
-            <div>系统提示词，用于设置助手的默认行为和风格。</div>
-          </template>
-          <el-icon>
-            <question-filled />
-          </el-icon>
-        </el-tooltip>
-        <label>系统提示词：</label>
+            <label>LLM Base URL</label>
+            <input v-model="settings.assistantSettings.baseUrl" type="text" @change="updateSettings">
+        </div>
+        <div class="setting-item">
+            <label>LLM API Key</label>
+            <input v-model="settings.assistantSettings.apiKey" type="text" @change="updateSettings">
+        </div>
+        <div class="setting-item">
+            <label>LLM 模型</label>
+            <input v-model="settings.assistantSettings.model" type="text" @change="updateSettings">
+        </div>
+        <div class="setting-item">
+            <div class="setting-header">
+                <el-tooltip content="系统提示词，用于设置助手的默认行为和风格。" placement="top">
+                    <template #content>
+                        <div>系统提示词，用于设置助手的默认行为和风格。</div>
+                    </template>
+                    <el-icon>
+                        <QuestionCircleFilled />
+                    </el-icon>
+                </el-tooltip>
+                <label>系统提示词</label>
             </div>
-            <el-input type="textarea" class="system-prompt-textarea" v-model="settings.assistantSettings.sysPrompt"
-                placeholder="请输入系统提示词" @change="updateSettings">
+            <el-input type="textarea" class="system-prompt-textarea" :rows="4"
+                v-model="settings.assistantSettings.sysPrompt" placeholder="请输入系统提示词" @change="updateSettings">
             </el-input>
         </div>
+        <div class="setting-item">
+            <div class="setting-header">
+                <el-tooltip content="MCP Servers，用于设置MCP服务器的地址。" placement="top" class="mcp-setting-tooltip">
+                    <template #content>
+                        <div>MCP Servers，用于设置MCP服务器的地址。</div>
+                    </template>
+                    <el-icon>
+                        <QuestionCircleFilled />
+                    </el-icon>
+                </el-tooltip>
+                <label>MCP Servers</label>
+                <div class="mcp-setting-edit">
+                    <EditOutlined @click="() => { editMcpServersModal = true }" />
+                </div>
+            </div>
+            <div class="mcp-server-list">
+                <MCPServerListItem v-for="item in mcpServers" :key="item.name" :item="item" />
+            </div>
+        </div>
     </div>
+    <Modal v-model:open="editMcpServersModal" title="编辑MCP服务器" @ok="editMcpServers" width="60%">
+        <JsonEditorVue v-model="mcpServersValue" :mode="Mode.text" :mainMenuBar=false :navigationBar=false />
+    </Modal>
 </template>
 
 <script setup lang="ts">
-import { ElSwitch } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
 import 'element-plus/dist/index.css'
-import { PropType, ref } from 'vue';
-import { SystemSettings } from '../models/message.vue';
+import { PropType, ref, h, watch, onMounted } from 'vue';
+import { SystemSettings, MCPServer, MCPServerStatus, MCPServerTool } from '../types/message';
+import MCPServerListItem from './mcp_server_list_item.vue'
+import { EditOutlined, QuestionCircleFilled } from '@ant-design/icons-vue';
+import { Modal, Alert, message } from 'ant-design-vue';
+import JsonEditorVue from 'json-editor-vue'
+import { Mode } from 'vanilla-jsoneditor';
+import { getMcpServerStatus } from '../utils/requests';
 
 const props = defineProps({
     systemSettings: {
@@ -57,6 +95,75 @@ const settings = ref<SystemSettings>(props.systemSettings)
 const updateSettings = () => {
     props.onChange(settings.value)
 }
+
+const setting2mcpServers = async (settings: SystemSettings) => {
+    if (!settings.assistantSettings.mcpServers) {
+        console.log('mcpServers is null')
+        return []
+    }
+    try {
+        const servers = JSON.parse(settings.assistantSettings.mcpServers)
+        const mcpServers: MCPServer[] = []
+        for (let i = 0; i < servers.length; i++) {
+            let status: MCPServerStatus | null = null
+            try {
+                status = await getMcpServerStatus(servers[i].name, settings)
+            } catch (error) {
+                console.error(error)
+            }
+            const server = {
+                name: servers[i].name,
+                transport: servers[i].transport,
+                url: servers[i].url,
+                command: servers[i].command,
+                args: servers[i].args,
+                tools: [] as MCPServerTool[],
+                status: 'offline'
+            }
+            if (status && status.status === 'success') {
+                server.status = 'online'
+                server.tools = status.details.tools
+            } else {
+                server.status = 'offline'
+            }
+            console.log('status', status)
+            console.log('server', server)
+            mcpServers.push(server)
+        }
+        console.log("mcpServers", mcpServers)
+        return mcpServers
+    } catch (error) {
+        console.error(error)
+        return []
+    }
+}
+
+const mcpServers = ref<MCPServer[]>([])
+watch(() => settings.value.assistantSettings.mcpServers, async () => {
+    mcpServers.value = await setting2mcpServers(settings.value)
+})
+
+
+const editMcpServersModal = ref<boolean>(false)
+const mcpServersValue = ref<any>(JSON.parse(props.systemSettings.assistantSettings.mcpServers || '[]'))
+const editMcpServers = () => {
+    // 检查 mcpServersValue 是否符合 MCPServer 的格式
+    let servers = mcpServersValue.value
+    if (typeof servers === 'string') {
+        try {
+            servers = JSON.parse(servers)
+        } catch (error) {
+            message.error('MCP服务器格式错误')
+            return
+        }
+    }
+    settings.value.assistantSettings.mcpServers = JSON.stringify(servers)
+    editMcpServersModal.value = false
+}
+
+onMounted(async () => {
+    mcpServers.value = await setting2mcpServers(settings.value)
+})
 </script>
 
 <style scoped>

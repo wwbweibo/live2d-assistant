@@ -23,7 +23,6 @@ class MCPServerConfig(BaseModel):
     env: Optional[dict[str, str]] = None
 
 class LLMConfig(BaseModel):
-    provider: str
     api_key: str
     base_url: str = Field(default="https://api.openai.com/v1")
     sys_prompt: Optional[str] = None
@@ -113,17 +112,25 @@ class STDIOClient(Client):
         tools = response.tools
         logger.info(f"Connected to server with tools: {[tool.name for tool in tools]}")
 
-class MCPClient(Client):
+class MCPClient:
     __clients: dict[str, Client] = {}
     __config: MCPClientConfig
     __llm_adapter: OpenAIAdapter
 
-    def __init__(self, config: MCPClientConfig):
+    def __init__(self):
         self.__clients = {}
+        self.__config = None
+        self.__llm_adapter = None
+
+    async def init(self, config: MCPClientConfig):
         self.__config = config
-        self.__llm_adapter = OpenAIAdapter(config.llm.provider, config.llm.api_key, config.llm.base_url)
-    
+        self.__llm_adapter = OpenAIAdapter('', config.llm.api_key, config.llm.base_url)
+        await self.connect_to_servers()
+        logger.info(f"MCPClient initialized with config: {config}")
+
     async def connect_to_servers(self):
+        del self.__clients
+        self.__clients = {}
         for server in self.__config.mcp_servers:
             if server.transport == "stdio":
                 client = STDIOClient(server)
@@ -162,25 +169,29 @@ class MCPClient(Client):
         '''
         流式处理用户的问题
         '''
-        messages = [{"role": "system", "content": self.__config.llm.sys_prompt}]
+        messages = []
         if history is not None:
-            messages = messages + [ message for message in history]
+            messages = messages + [message for message in history]
         messages.append({"role": "user", "content": query})
         tools, tool_name2server_name = await self.list_all_tools()
-        resp = await self.chat(model, messages, tools, stream=True)
-        async for chunk in resp:
-            if chunk.tool_calls:
-                # 处理工具调用
-                for tool_call in chunk.tool_calls:
-                    tool_response = await self.__call_tool(tool_name2server_name, tool_call.name, tool_call.arguments, tool_call.id)
-                    messages.append(self.__llm_adapter.tool_call_process(chunk, tool_call))
-                    messages.append(tool_response)
-                # 继续流式处理
-                resp = await self.chat(model, messages, tools, stream=True)
-                async for next_chunk in resp:
-                    yield next_chunk.content
+
+        while True:
+            resp = await self.chat(model, messages, tools, stream=True)
+            async for chunk in resp:
+                logger.info(f"stream_process_query chunk: {chunk}")
+                if chunk.tool_calls:
+                    # 处理工具调用
+                    for tool_call in chunk.tool_calls:
+                        tool_response = await self.__call_tool(tool_name2server_name, tool_call.name, tool_call.arguments, tool_call.id)
+                        messages.append(self.__llm_adapter.tool_call_process(chunk, tool_call))
+                        messages.append(tool_response)
+                    # 有 tool_calls，跳出当前 async for，重新请求 chat
+                    break
+                else:
+                    yield chunk.content
             else:
-                yield chunk.content
+                # 没有 tool_calls，正常结束
+                break
 
     async def __call_tool(self, tool_name2server_name: dict, name: str, args: dict, call_id: str) -> dict:
         tool: Client = self.__clients[tool_name2server_name[name]]
@@ -220,6 +231,8 @@ class MCPClient(Client):
         for client in self.__clients.values():
             tools.extend(await client.list_tools())
         tool_name2server_name = {tool["function"]["name"]: tool["server_name"] for tool in tools}
+        if len(tool_name2server_name) == 0:
+            return None, None
         return tools, tool_name2server_name
 
     async def list_tools(self, name: str) -> ListToolsResult:
@@ -227,3 +240,38 @@ class MCPClient(Client):
     
     async def get_client_session(self, name: str) -> ClientSession:
         return self.__clients[name].session
+    
+    async def get_server_details(self, name: str) -> dict:
+        if name not in self.__clients:
+            return {
+                "status": "error",
+                "message": "Server not found"
+            }
+        try:
+            tools = await self.list_tools(name)
+            return {
+                "status": "success",
+                "message": "Server details",
+                "details": {
+                    "tools": [{
+                        "name": tool.name,
+                        "description": tool.description
+                    } for tool in tools.tools]
+                }
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+client : MCPClient = MCPClient()
+
+def get_mcp_client() -> MCPClient:
+    global client
+    if client is None:
+        raise ValueError("MCPClient not initialized")
+    return client
+
+async def init_mcp_client(config: MCPClientConfig):
+    global client
+    await client.init(config)

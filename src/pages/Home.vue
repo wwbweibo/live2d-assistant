@@ -2,7 +2,6 @@
   <div class="home">
     <canvas ref="live2dCanvas"></canvas>
     <div class="ai-assistant-overlay">
-      <!-- 左右分栏，左侧27%，右侧73%，左侧展示对话列表，设置，聊天，右侧展示对话内容 -->
       <div class="ai-assistant-container-left">
         <div class="assistant-title">
           <div class="assistant-title-text">
@@ -10,7 +9,18 @@
           </div>
         </div>
         <div class="conversation-list">
-          <Conversations :items="conversationItems" />
+          <div class="conversation-new-button" @click="handleNewConversation">
+            <div class="conversation-new-button-icon">
+              <FormOutlined />
+            </div>
+            <div class="conversation-new-button-text">
+              新对话
+            </div>
+          </div>
+          <Conversations 
+          :items="conversationItems" 
+          :active-key="selectedConversationKey"
+          :on-active-change="onSelectedConversationChange" />
         </div>
         <!-- 分割线 -->
         <div class="assistant-setting-divider"></div>
@@ -26,31 +36,28 @@
         </div>
       </div>
       <div class="ai-assistant-container-right">
-        <ChatPage :systemSettings="systemSettings" />
+        <ChatPage :systemSettings="systemSettings" :onNewMessage="handleNewMessage" :conversation="currentConversation" />
       </div>
     </div>
-    <a-modal :visible="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings">
+    <a-modal :open="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings">
       <SettingModal :settings="systemSettings" :updateSettings="handleSystemSettingsUpdate" />
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import { ref, onMounted, onUnmounted, reactive } from 'vue'
+import { FormOutlined } from '@ant-design/icons-vue'
 import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4, MotionPreloadStrategy } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
-
 import { Conversations } from 'ant-design-x-vue'
-import type { ConversationsProps } from 'ant-design-x-vue'
-
-import { Modal as AModal, Button as AButton } from 'ant-design-vue'
-
+import { Modal as AModal, Button as AButton, message } from 'ant-design-vue'
 import SettingModal from '../components/setting_modal.vue'
 import ChatPage from '../components/chat.vue'
-import { Live2DSettings, SystemSettings } from '../models/message.vue'
-
+import { SystemSettings, Conversation } from '../types/message'
+import { updateConfig } from '../utils/requests'
+import { v4 as uuidv4 } from 'uuid'
 // 注册 Ticker
 Live2DModelCubism4.registerTicker(PIXI.Ticker)
 Live2DModelCubism2.registerTicker(PIXI.Ticker)
@@ -60,21 +67,27 @@ let app: PIXI.Application | null = null
 let model: any = null
 const showSettings = ref(false)
 const STORAGE_KEY = 'live2d-viewer-settings'
+const STORAGE_KEY_CONVERSATIONS = 'live2d-viewer-conversations'
+const conversationItems = ref<Conversation[]>([])
+const currentConversation = ref<Conversation>({
+  key: '',
+  label: '新对话',
+  messages: [],
+  createdAt: '',
+  updatedAt: ''
+})
+const selectedConversationKey = ref<string>(currentConversation.value.key)
 
-const conversationItems: ConversationsProps['items'] = Array.from({ length: 4 }).map((_, index) => ({
-  key: `item${index + 1}`,
-  label: `Conversation Item ${index + 1}`,
-  group: 'Today'
-}));
-
-const systemSettings = reactive({
+const systemSettings = reactive<SystemSettings>({
   serverUrl: 'http://localhost:8000',
-  debugEnabled: false,
   backgroundPath: 'assets/background.jpg',
   assistantSettings: {
     assistantName: 'Senko',
     sysPrompt: undefined,
     model: 'qwen2.5',
+    apiKey: undefined,
+    baseUrl: undefined,
+    mcpServers: '',
   },
   live2DSettings: {
     modelPath: 'assets/models/Senko_Normals/senko.model3.json',
@@ -89,7 +102,9 @@ const saveSettings = () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     systemSettings
   }))
-  ElMessage.success('设置已保存')
+  message.success('设置已保存')
+  showSettings.value = false
+  updateConfig(systemSettings)
 }
 
 // 从 localStorage 加载设置
@@ -101,6 +116,30 @@ const loadSettings = () => {
   }
 }
 
+const loadConversations = () => {
+  const savedConversations = localStorage.getItem(STORAGE_KEY_CONVERSATIONS)
+  if (savedConversations) {
+    const parsed = JSON.parse(savedConversations)
+    conversationItems.value = parsed.conversationItems
+  }
+}
+
+const handleNewMessage = (conversation: Conversation) => {
+  console.log('get new message', conversation)
+  if (conversationItems.value.find(item => item.key === conversation.key)) {
+    currentConversation.value = conversation
+  } else {
+    conversationItems.value.push(conversation)
+    currentConversation.value = conversation
+  }
+  // write to localStorage
+  localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify({
+    conversationItems: conversationItems.value
+  }))
+  console.log('currentConversation', currentConversation.value)
+  console.log('conversationItems', conversationItems.value)
+}
+
 const handleSystemSettingsUpdate = (newSettings: SystemSettings) => {
   if (systemSettings.live2DSettings.modelPath !== newSettings.live2DSettings.modelPath) {
     updateModel()
@@ -109,6 +148,34 @@ const handleSystemSettingsUpdate = (newSettings: SystemSettings) => {
   updatePosition()
   updateScale()
   Object.assign(systemSettings, newSettings)
+}
+
+const handleNewConversation = () => {
+  currentConversation.value = {
+    key: uuidv4().toString(),
+    label: '新对话',
+    messages: [],
+    createdAt: new Date().toLocaleString(),
+    updatedAt: new Date().toLocaleString()
+  }
+  selectedConversationKey.value = currentConversation.value.key
+  conversationItems.value.push(currentConversation.value)
+  localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify({
+    conversationItems: conversationItems.value
+  }))
+}
+
+const onSelectedConversationChange = (key: string) => {
+  console.log('onSelectedConversationChange', key)
+  selectedConversationKey.value = key
+  currentConversation.value = conversationItems.value.find(item => item.key === key) || {
+    key: '',
+    label: '新对话',
+    messages: [],
+    createdAt: '',
+    updatedAt: ''
+  }
+  console.log('currentConversation', currentConversation.value)
 }
 
 // 更新模型位置
@@ -191,6 +258,8 @@ const updateModel = async () => {
 onMounted(async () => {
   loadSettings()
   updateBackground()
+  updateConfig(systemSettings)
+  loadConversations()
 
   if (!live2dCanvas.value) {
     console.error('Canvas element not found!')
@@ -426,4 +495,27 @@ canvas {
   height: 100%;
   background: rgba(255, 255, 255, 0.8);
 }
+
+.conversation-new-button {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px;
+  border-radius: 10px;
+}
+
+.conversation-new-button:hover {
+  background: rgba(0,0,0, 0.1);
+}
+
+.conversation-new-button-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  font-family: 'Arial', sans-serif;
+}
+
 </style>

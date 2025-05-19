@@ -37,29 +37,38 @@ class OpenAIAdapter():
 
     async def _chat_stream(self, model: str, messages: list[dict], tools: list[dict]) -> AsyncGenerator[ChatResponse, None]:
         resp = await self.openai_client.chat.completions.create(model=model, messages=messages, tools=tools, stream=True)
+        tool_calls = {}
         async for chunk in resp:
             if len(chunk.choices) > 0:
-                yield ChatResponse(
-                    model=chunk.model,
-                    role=chunk.choices[0].delta.role,
-                    content=chunk.choices[0].delta.content,
-                    tool_calls=[
-                        ToolCall(
-                            id=tool_call.id, 
-                            name=tool_call.function.name, 
-                            arguments=tool_call.function.arguments
-                        ) 
-                        for tool_call in chunk.choices[0].delta.tool_calls
-                    ] if chunk.choices[0].delta.tool_calls else None
-                )
-            # else:
-            #     yield ChatResponse(
-            #         model=chunk.model,
-            #         role=chunk.choices[0].message.role,
-            #         content=chunk.choices[0].message.content,
-            #         tool_calls=chunk.choices[0].message.tool_calls,
-            #     )
-
+                if chunk.choices[0].delta.tool_calls is not None:
+                    # 如果有工具调用，在这里等待工具调用完了之后再返回
+                    for tool_call in chunk.choices[0].delta.tool_calls:
+                        id = tool_call.id
+                        index = tool_call.index
+                        name = tool_call.function.name
+                        arguments = tool_call.function.arguments
+                        previous_tool_call = tool_calls.get(index)
+                        if previous_tool_call is None:
+                            tool_calls[index] = ToolCall(id=id, name=name, arguments=arguments)
+                        else:
+                            tool_calls[index].arguments +=  arguments if arguments is not None else ''
+                            tool_calls[index].name += name if name is not None else ''
+                            tool_calls[index].id += id if id is not None else ''
+                if chunk.choices[0].delta.content is not None:
+                    # 如果content不为空，则返回
+                    yield ChatResponse(
+                        model=chunk.model,
+                        role=chunk.choices[0].delta.role if chunk.choices[0].delta.role is not None else 'assistant',
+                        content=chunk.choices[0].delta.content if chunk.choices[0].delta.content is not None else ''
+                    )
+                if len(tool_calls) > 0 and chunk.choices[0].delta.tool_calls is None:
+                    # 如果工具调用完了，则返回
+                    yield ChatResponse(
+                        model=chunk.model,
+                        role=chunk.choices[0].delta.role if chunk.choices[0].delta.role is not None else 'assistant',
+                        content=chunk.choices[0].delta.content if chunk.choices[0].delta.content is not None else '',
+                        tool_calls=list(tool_calls.values())
+                    )
 
     async def generate(self, model: str, prompt: str, format: dict = None) -> Any:
         response = await self.openai_client.chat.completions.create(model=model, messages=[{"role": "user", "content": prompt}], response_format=format)

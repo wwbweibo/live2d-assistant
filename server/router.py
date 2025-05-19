@@ -9,7 +9,7 @@ from search import BingSearchEngine
 from typing import List, Optional, AsyncGenerator
 from pydantic import BaseModel
 from configuration import Config
-from client import MCPClient
+from client import get_mcp_client, MCPClientConfig, init_mcp_client
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,6 @@ class TTSRequest(BaseModel):
 config = None
 tts_server = None
 llm_adapter = None
-mcp_client = None
 
 def set_config(_config: Config):
     global config
@@ -50,15 +49,6 @@ def get_tts_server():
 def get_llm_adapter():
     return llm_adapter
 
-def set_mcp_client(_mcp_client: MCPClient):
-    global mcp_client
-    logger.info(f"set_mcp_client: {_mcp_client}")
-    mcp_client = _mcp_client
-
-def get_mcp_client():
-    global mcp_client
-    logger.info(f"get_mcp_client: {mcp_client}")
-    return mcp_client
 
 def init_tts_if_needed(config: Config, tts_server=None):
     """初始化TTS服务"""
@@ -78,7 +68,6 @@ async def stream_chat_response(
     request: ChatRequest,
     config: Config = Depends(get_config),
     llm_adapter = Depends(get_llm_adapter),
-    mcp_client = Depends(get_mcp_client),
     tts_server = Depends(get_tts_server)
 ) -> AsyncGenerator[str, None]:
     """生成流式聊天响应"""
@@ -91,7 +80,7 @@ async def stream_chat_response(
             request.messages[-1]['content'] = '使用以下搜索结果作为上下文，回答用户的问题：' + '\n'.join(search_result) + '\n' + request.messages[-1]['content']
         
         # 流式处理查询
-        async for chunk in mcp_client.stream_process_query(request.model, request.messages[-1]['content']):
+        async for chunk in get_mcp_client().stream_process_query(request.model, request.messages[-1]['content'], request.messages[:-1]):
             logger.info(f"stream_chat_response: {chunk}")
             yield f"data: {json.dumps({'type': 'text', 'content': chunk})}\n\n"
             await asyncio.sleep(0)  # 让出控制权给其他协程
@@ -117,12 +106,11 @@ async def chat(
     request: ChatRequest,
     config: Config = Depends(get_config),
     llm_adapter = Depends(get_llm_adapter),
-    mcp_client = Depends(get_mcp_client),
     tts_server = Depends(get_tts_server)
 ):
     """流式聊天接口"""
     return StreamingResponse(
-        stream_chat_response(request, config, llm_adapter, mcp_client, tts_server),
+        stream_chat_response(request, config, llm_adapter, tts_server),
         media_type="text/event-stream"
     )
 
@@ -149,13 +137,20 @@ async def get_settings(config: Config = Depends(get_config)):
     return config
 
 @router.post('/api/settings')
-async def set_settings(request: Request, config: Config = Depends(get_config)):
+async def set_settings(request: Request):
     '''
     设置系统设置
     '''
-    data = await request.json()
-    config.update(data)
-    return config
+    json_data = await request.body()
+    request_data = MCPClientConfig.model_validate_json(json_data)
+    await init_mcp_client(request_data)
+
+@router.get('/api/mcp_servers/{name}/status')
+async def get_mcp_servers(name: str, config: Config = Depends(get_config)):
+    '''
+    获取MCP服务器状态
+    '''
+    return await get_mcp_client().get_server_details(name)
 
 @router.get('/health')
 async def health(config: Config = Depends(get_config)):

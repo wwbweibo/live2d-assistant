@@ -1,6 +1,6 @@
 <template>
   <div class="chat-container">
-    <div class="messages">
+    <div class="messages" ref="messagesRef">
       <Flex gap="middle" vertical>
         <Bubble :placement="message.role === 'assistant' ? 'start' : 'end'"
           :avatar="{ icon: h(UserOutlined), style: fooAvatar }" 
@@ -8,9 +8,10 @@
           class="message"
           :content="message.content"
           :key="message.id"
+          :messageRender="renderMarkdown"
           v-model:value="value"
           :loading="message.loading"
-          v-for="message in localMessages"  />
+          v-for="message in localConversation.messages"  />
       </Flex>
     </div>
     <!-- <div class="chat-sender"> -->
@@ -20,17 +21,28 @@
 </template>
 
 <script setup lang="ts">
-import { Flex } from 'ant-design-vue';
+import { Flex, Typography } from 'ant-design-vue';
 import { Sender, Bubble } from 'ant-design-x-vue';
+import type { BubbleProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
-import { h, ref, watch } from 'vue';
+import { h, ref, watch, nextTick, toRef } from 'vue';
 import { PropType } from 'vue';
 import { fetchEventData } from 'fetch-sse';
+import markdownit from 'markdown-it';
+import { v4 as uuidv4 } from 'uuid';
+import { Message, SystemSettings, ChatHistory, Conversation } from '../types/message';
 
-import { Message, SystemSettings, ChatHistory } from '../models/message.vue';
-import { settings } from 'pixi.js';
+
+const md = markdownit({ html: true, breaks: true });
+
+const renderMarkdown: BubbleProps['messageRender'] = (content) =>
+h(Typography, null, {
+  default: () => h('div', { innerHTML: md.render(content) }),
+});
+
+const messagesRef = ref<HTMLDivElement>();
 
 const fooAvatar: CSSProperties = {
   color: '#f56a00',
@@ -50,9 +62,13 @@ defineOptions();
 
 // 定义组件参数
 const props = defineProps({
-  messages: {
-    type: Array as PropType<Message[]>,
-    required: false,
+  conversation: {
+    type: Object as PropType<Conversation>,
+    required: true,
+  },
+  onNewMessage: {
+    type: Function as PropType<(conversation: Conversation) => void>,
+    required: true,
   },
   systemSettings: {
     type: Object as PropType<SystemSettings>,
@@ -61,26 +77,58 @@ const props = defineProps({
 });
 
 const value = ref('');
-const localMessages = ref<Message[]>([...(props.messages || [])])
+const localConversation = ref<Conversation>(props.conversation)
+const conversationRef = toRef(props, 'conversation')
 
-watch(() => props.messages, (newVal) => {
-  if (newVal) localMessages.value = [...newVal]
+const handleMessageChange = (newVal: Message[]) => {
+  if (localConversation.value.key === "") {
+    localConversation.value.messages = newVal
+    localConversation.value.key = uuidv4().toString()
+    localConversation.value.label = newVal[0].content
+  }
+  console.log('localConversation', localConversation.value)
+  props.onNewMessage(localConversation.value)
+}
+
+watch(conversationRef, async () => {
+  localConversation.value = props.conversation
+  console.log("conversationRef watch")
+  await nextTick()
+  if (messagesRef.value) {
+    console.log("messagesRef.value scrollTo")
+    console.log("messagesRef.value.scrollHeight", messagesRef.value.scrollHeight)
+    messagesRef.value.scrollTo({
+      top: messagesRef.value.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
+})
+
+watch(localConversation.value.messages, async () => {
+  await nextTick()
+  if (messagesRef.value) {
+    console.log("localConversation.value.messages watch")
+    messagesRef.value.scrollTo({
+      top: messagesRef.value.scrollHeight,
+      behavior: 'smooth'
+    })
+  }
 })
 
 const sendMessage = async () => {
-  console.log('sendMessage')
   const message = value.value;
   value.value = ''
   if (message) {
     // 添加新消息
-    localMessages.value.push({
-      id: localMessages.value.length + 1,
+    localConversation.value.messages.push({
+      id: localConversation.value.messages.length + 1,
       role: "user",
       content: message,
       timestamp: new Date().toLocaleString(),
       loading: false
     })
-    let chat_history = localMessages.value.map(msg => ({
+    handleMessageChange(localConversation.value.messages)
+    let chat_history = localConversation.value.messages.map(msg => ({
       role: msg.role === 'user' ? 'user' : 'assistant',
       content: msg.content
     }))
@@ -89,10 +137,11 @@ const sendMessage = async () => {
     sendMessageToOllama(chat_history)
   }
 }
+
 const sendMessageToOllama = async (messages: ChatHistory[]) => {
   // 先往messages中添加一个loading的消息
-  localMessages.value.push({
-    id: localMessages.value.length + 1,
+  localConversation.value.messages.push({
+    id: localConversation.value.messages.length + 1,
     role: 'assistant',
     content: '',
     timestamp: new Date().toLocaleString(),
@@ -101,6 +150,13 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
   let message = ''
   let isThinking = false
   let thinking = ''
+  // 如果系统设置中存在系统提示词，则添加到messages中
+  if (props.systemSettings?.assistantSettings.sysPrompt) {
+    messages.unshift({
+      role: 'system',
+      content: props.systemSettings.assistantSettings.sysPrompt
+    })
+  }
   await fetchEventData(props.systemSettings!.serverUrl + '/api/chat', {
     method: 'POST',
     headers: {
@@ -114,26 +170,28 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
     },
     onMessage: (event) => {
       // this.isLoading = false
-      console.log(event)
-      localMessages.value[localMessages.value.length - 1].loading = false
       const data = JSON.parse(event!.data)
       if (data.type === 'text') {
-        if (data.content === '<think>' || isThinking) {
-          // 正在输出thinking的内容
+        if (data.content === '<think>' || isThinking) {          // 正在输出thinking的内容
           if (data.content === '</think>') {
             isThinking = false
             return
           }
           isThinking = true
           thinking = (thinking + data.content).replace('<think>', '').replace('</think>', '')
-          localMessages.value[localMessages.value.length - 1].content = thinking
+          localConversation.value.messages[localConversation.value.messages.length - 1].content = thinking
           return
         } else {
           message += data.content
-          localMessages.value[localMessages.value.length - 1].content = message
+          localConversation.value.messages[localConversation.value.messages.length - 1].content = message
+        }
+        if (localConversation.value.messages[localConversation.value.messages.length - 1].content.length > 0) {
+          localConversation.value.messages[localConversation.value.messages.length - 1].loading = false
         }
       }
     }
+  }).then(() => {
+    props.onNewMessage(localConversation.value)
   })
 }
 // async playAudio(wav_data) {
@@ -169,9 +227,16 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
 }
 
 .messages {
-  width: 80%;
+  width: 100%;
   height: 100%;
+  /* padding: 20px; */
+  padding-left: 10%;
+  padding-right: 10%;
   align-self: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 滚动条样式 */
+  scrollbar-width: thin;
 }
 
 .message {

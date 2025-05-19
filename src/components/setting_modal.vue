@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { ref, defineProps, defineEmits } from 'vue'
 import { Modal as AModal, Tooltip as ATooltip } from 'ant-design-vue'
-import { SystemSettings as Settings } from '../models/message.vue'
+import { SystemSettings as Settings } from '../types/message'
 import SystemSettings from './system_settings.vue'
 import { PropType } from 'vue'
 
