@@ -30,6 +30,7 @@ process.on('unhandledRejection', (reason) => {
   app.quit();
 });
 
+let backgroundService = null
 // 在创建窗口前加载配置
 const appConfig = config.getConfig();
 if (!appConfig) {
@@ -45,9 +46,9 @@ function createWindow(config) {
       contextIsolation: true,
       webSecurity: false
     },
-    transparent: true,
-    alwaysOnTop: true,
-    frame: true,
+    // transparent: true,
+    // alwaysOnTop: true,
+    // frame: true,
   });
   mainWindow.loadURL(`http://${config.server.host}:${config.server.port}/`);
   mainWindow.webContents.on('crashed', () => {
@@ -141,7 +142,7 @@ async function waitForServer(config, retryCount = 0) {
 app.whenReady().then(async () => {
   try {
     logger.info('应用程序启动');
-    const backgroundService = createBackgroundService(appConfig, config.configPath);
+    backgroundService = createBackgroundService(appConfig, config.configPath);
     // 等待服务器启动
     await waitForServer(appConfig);
     // 监听后台服务的错误
@@ -163,6 +164,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+  backgroundService.kill();
 });
 
 app.on('activate', () => {

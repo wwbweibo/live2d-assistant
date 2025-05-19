@@ -5,7 +5,7 @@ import os
 import argparse
 import logging
 from configuration import Config
-from router import router
+from router import router, set_config
 from contextlib import asynccontextmanager
 import uvicorn
 
@@ -15,29 +15,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # mcp_client = MCPClient(MCPClientConfig(
-    #     llm=LLMConfig(
-    #         provider=config.server.llm.provider,
-    #         api_key=config.server.llm.api_key,
-    #         base_url=config.server.llm.base_url,
-    #         sys_prompt=config.server.llm.sys_prompt
-    #     ),
-    #     mcp_servers=[MCPServerConfig(
-    #         name=server.name,
-    #         transport=server.transport,
-    #         url=server.url,
-    #         command=server.command,
-    #         args=server.args,
-    #         env=server.env
-    #     ) for server in config.server.mcp_servers]
-    #     # mcp_servers=[]
-    # ))
-    # await mcp_client.connect_to_servers()
-    # tools = await mcp_client.list_all_tools()
-    # for tool in tools:
-    #     print(tool)
-    # set_config(config)
-    # set_mcp_client(mcp_client)
+    set_config(config)
     app.include_router(router)
     app.mount("/", StaticFiles(directory=config.server.staticPath, html=True), name="static")
     yield
