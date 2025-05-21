@@ -1,5 +1,18 @@
 <template>
   <div class="chat-container">
+    <div class="chat-header">
+      <div class="chat-header-title">
+        <span v-if="!isEditing">{{ localConversation.label }}</span>
+        <Input class="chat-header-title-input" 
+            v-model:value="localConversation.label" 
+            v-if="isEditing" 
+            @focusout="handleSaveConversationLabel"
+            @keydown.enter="handleSaveConversationLabel" />
+      </div>
+      <div class="chat-header-actions">
+        <EditOutlined @click="handleEditConversationLabel" ref="chatHeaderTitleInputRef" />
+      </div>
+    </div>
     <div class="messages" ref="messagesRef">
       <Flex gap="middle" vertical>
         <BubbleList :roles="roles" :items="message2BubbleListItem()" />
@@ -22,11 +35,11 @@
 </template>
 
 <script setup lang="ts">
-import { Flex, Typography } from 'ant-design-vue';
+import { Flex, Input, Typography } from 'ant-design-vue';
 import { Sender, Bubble, BubbleList, Prompts } from 'ant-design-x-vue';
 import type { BubbleProps, BubbleListProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
-import { UserOutlined } from '@ant-design/icons-vue';
+import { UserOutlined, EditOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
 import { h, ref, watch, nextTick, toRef } from 'vue';
 import { PropType } from 'vue';
@@ -37,11 +50,14 @@ import { Message, SystemSettings, ChatHistory, Conversation } from '../types/mes
 import ToolCall from './tool_call.vue';
 
 const md = markdownit({ html: true, breaks: true });
+const isEditing = ref(false)
+const chatHeaderTitleInputRef = ref<HTMLInputElement>()
+const messagesRef = ref<HTMLDivElement>();
 
-const renderMarkdown: BubbleProps['messageRender'] = (content) =>
-h(Typography, null, {
-  default: () => h('div', { innerHTML: md.render(content) }),
-});
+// const renderMarkdown: BubbleProps['messageRender'] = (content) =>
+// h(Typography, null, {
+//   default: () => h('div', { innerHTML: md.render(content) }),
+// });
 
 const roles: BubbleListProps['roles'] = {
   assistant: {
@@ -80,8 +96,6 @@ const message2BubbleListItem = () => {
     loading: msg.loading
   }))
 } 
-
-const messagesRef = ref<HTMLDivElement>();
 
 defineOptions();
 
@@ -259,6 +273,20 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
     props.onNewMessage(localConversation.value)
   })
 }
+
+const handleEditConversationLabel = () => {
+  isEditing.value = true
+  nextTick(() => {
+    chatHeaderTitleInputRef.value?.focus()
+  })
+}
+
+const handleSaveConversationLabel = () => {
+  isEditing.value = false
+  // localConversation.value.label = chatHeaderTitleInputRef.value?.value as string
+  props.onNewMessage(localConversation.value)
+}
+
 // async playAudio(wav_data) {
 //   for (let i = 0; i < wav_data.length; i++) {
 //     // base64解码
@@ -295,6 +323,7 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
   width: 100%;
   height: 100%;
   /* padding: 20px; */
+  /* margin-top: 10px; */
   padding-left: 10%;
   padding-right: 10%;
   align-self: center;
@@ -316,5 +345,33 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
   box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   background-color: #fff;
+}
+.chat-header {
+  /* width: 100%; */
+  height: 50px;
+  margin: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-header-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #000;
+  text-align: center;
+}
+
+.chat-header-actions {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+.chat-header-title-input {
+  width: 100%;
+  height: 100%;
 }
 </style>

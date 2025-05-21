@@ -131,16 +131,19 @@ class MCPClient:
         del self.__clients
         self.__clients = {}
         for server in self.__config.mcp_servers:
-            if server.transport == "stdio":
-                client = STDIOClient(server)
-                await client.connect()
-                self.__clients[server.name] = client
-            elif server.transport == "sse":
-                client = SSEClient(server)
-                await client.connect()
-                self.__clients[server.name] = client
-            else:
-                raise ValueError("Invalid transport")
+            try:
+                if server.transport == "stdio":
+                    client = STDIOClient(server)
+                    await client.connect()
+                    self.__clients[server.name] = client
+                elif server.transport == "sse":
+                    client = SSEClient(server)
+                    await client.connect()
+                    self.__clients[server.name] = client
+                else:
+                    raise ValueError("Invalid transport")
+            except Exception as e:
+                logger.error(f"Failed to connect to server {server.name}: {e}")
     
     async def process_query(self, model: str, query: str, history: list[dict] = None):
         '''
