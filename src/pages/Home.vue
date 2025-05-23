@@ -41,7 +41,7 @@
         <ChatPage :systemSettings="systemSettings" :onNewMessage="handleNewMessage" :conversation="currentConversation" />
       </div>
     </div>
-    <a-modal :open="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings">
+    <a-modal :open="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings" :width="800">
       <SettingModal :settings="systemSettings" :updateSettings="handleSystemSettingsUpdate" />
     </a-modal>
   </div>
@@ -100,7 +100,8 @@ const systemSettings = reactive<SystemSettings>({
     modelPath: 'assets/models/Senko_Normals/senko.model3.json',
     offsetX: 0,
     offsetY: 0,
-    scale: 0.5
+    scale: 0.5,
+    themeColor: 'rgba(255, 255, 255, 0.8)'
   }
 })
 
@@ -218,6 +219,7 @@ const handleSystemSettingsUpdate = (newSettings: SystemSettings) => {
   updateBackground()
   updatePosition()
   updateScale()
+  updateBackgroundOpacity()
   Object.assign(systemSettings, newSettings)
 }
 
@@ -271,6 +273,14 @@ const updateBackground = () => {
   const homeElement = document.querySelector('.home') as HTMLElement
   if (homeElement) {
     homeElement.style.backgroundImage = `url('${systemSettings.backgroundPath}')`
+  }
+}
+
+// 更新背景透明度
+const updateBackgroundOpacity = () => {
+  const homeElement = document.querySelector('.ai-assistant-container-right') as HTMLElement
+  if (homeElement) {
+    homeElement.style.backgroundColor = systemSettings.live2DSettings.themeColor
   }
 }
 

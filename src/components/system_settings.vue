@@ -1,68 +1,103 @@
 <template>
     <div class="settings-section">
-        <div class="setting-item">
-            <label>服务器地址</label>
-            <input v-model="settings.serverUrl" type="text" @change="updateSettings">
-        </div>
-        <div class="setting-item">
-            <label>背景图片</label>
-            <div class="setting-control">
-                <input v-model="settings.backgroundPath" type="text" @change="updateSettings">
-                <button class="reset-button" @click="">重置</button>
-            </div>
-        </div>
-        <!-- 助手设置 -->
-        <div class="setting-item">
-            <label>助手名称</label>
-            <input v-model="settings.assistantSettings.assistantName" type="text" @change="updateSettings">
-        </div>
-        <div class="setting-item">
-            <label>LLM Base URL</label>
-            <input v-model="settings.assistantSettings.baseUrl" type="text" @change="updateSettings">
-        </div>
-        <div class="setting-item">
-            <label>LLM API Key</label>
-            <input v-model="settings.assistantSettings.apiKey" type="text" @change="updateSettings">
-        </div>
-        <div class="setting-item">
-            <label>LLM 模型</label>
-            <input v-model="settings.assistantSettings.model" type="text" @change="updateSettings">
-        </div>
-        <div class="setting-item">
-            <div class="setting-header">
-                <el-tooltip content="系统提示词，用于设置助手的默认行为和风格。" placement="top">
-                    <template #content>
-                        <div>系统提示词，用于设置助手的默认行为和风格。</div>
-                    </template>
-                    <el-icon>
-                        <QuestionCircleFilled />
-                    </el-icon>
-                </el-tooltip>
-                <label>系统提示词</label>
-            </div>
-            <el-input type="textarea" class="system-prompt-textarea" :rows="4"
-                v-model="settings.assistantSettings.sysPrompt" placeholder="请输入系统提示词" @change="updateSettings">
-            </el-input>
-        </div>
-        <div class="setting-item">
-            <div class="setting-header">
-                <el-tooltip content="MCP Servers，用于设置MCP服务器的地址。" placement="top" class="mcp-setting-tooltip">
-                    <template #content>
-                        <div>MCP Servers，用于设置MCP服务器的地址。</div>
-                    </template>
-                    <el-icon>
-                        <QuestionCircleFilled />
-                    </el-icon>
-                </el-tooltip>
-                <label>MCP Servers</label>
-                <div class="mcp-setting-edit">
-                    <EditOutlined @click="() => { editMcpServersModal = true }" />
+        <Collapse v-model:activeKey="collapseActiveKey">
+            <CollapsePanel header="基础设置" key="basic">
+                <div class="setting-item">
+                    <label>服务器地址</label>
+                    <input v-model="settings.serverUrl" type="text" @change="updateSettings">
                 </div>
-            </div>
-            <div class="mcp-server-list">
-                <MCPServerListItem v-for="item in mcpServers" :key="item.name" :item="item" />
-            </div>
-        </div>
+            </CollapsePanel>
+            <CollapsePanel header="Live2D 设置" key="live2d">
+                <div class="setting-item">
+                    <label>背景图片</label>
+                    <div class="setting-control">
+                        <input v-model="settings.backgroundPath" type="text" @change="updateSettings">
+                        <button class="reset-button" @click="">重置</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Live2D 模型</label>
+                    <div class="setting-control">
+                        <input v-model="settings.live2DSettings.modelPath" type="text" @change="updateSettings">
+                        <button class="reset-button" @click="">重置</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>模型横向偏移</label>
+                    <Slider v-model:value="settings.live2DSettings.offsetX" @change="updateSettings" :min="-100"
+                        :max="100" :step="1" />
+                </div>
+                <div class="setting-item">
+                    <label>模型纵向偏移</label>
+                    <Slider v-model:value="settings.live2DSettings.offsetY" @change="updateSettings" :min="-100"
+                        :max="100" :step="1" />
+                </div>
+                <div class="setting-item">
+                    <label>模型缩放</label>
+                    <Slider v-model:value="settings.live2DSettings.scale" @change="updateSettings" :min="0.1" :max="1"
+                        :step="0.1" />
+                </div>
+                <div class="setting-item">
+                    <label>主题颜色</label>
+                    <div class="setting-control">
+                        <ColorPicker v-model:pureColor="settings.live2DSettings.themeColor" @pureColorChange="updateSettings"/>
+                    </div>
+                </div>
+            </CollapsePanel>
+            <CollapsePanel header="LLM 设置" key="llm">
+                <div class="setting-item">
+                    <label>助手名称</label>
+                    <input v-model="settings.assistantSettings.assistantName" type="text" @change="updateSettings">
+                </div>
+                <div class="setting-item">
+                    <label>LLM Base URL</label>
+                    <input v-model="settings.assistantSettings.baseUrl" type="text" @change="updateSettings">
+                </div>
+                <div class="setting-item">
+                    <label>LLM API Key</label>
+                    <input v-model="settings.assistantSettings.apiKey" type="text" @change="updateSettings">
+                </div>
+                <div class="setting-item">
+                    <label>LLM 模型</label>
+                    <input v-model="settings.assistantSettings.model" type="text" @change="updateSettings">
+                </div>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <el-tooltip content="系统提示词，用于设置助手的默认行为和风格。" placement="top">
+                            <template #content>
+                                <div>系统提示词，用于设置助手的默认行为和风格。</div>
+                            </template>
+                            <el-icon>
+                                <QuestionCircleFilled />
+                            </el-icon>
+                        </el-tooltip>
+                        <label>系统提示词</label>
+                    </div>
+                    <el-input type="textarea" class="system-prompt-textarea" :rows="4"
+                        v-model="settings.assistantSettings.sysPrompt" placeholder="请输入系统提示词" @change="updateSettings">
+                    </el-input>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-header">
+                        <el-tooltip content="MCP Servers，用于设置MCP服务器的地址。" placement="top" class="mcp-setting-tooltip">
+                            <template #content>
+                                <div>MCP Servers，用于设置MCP服务器的地址。</div>
+                            </template>
+                            <el-icon>
+                                <QuestionCircleFilled />
+                            </el-icon>
+                        </el-tooltip>
+                        <label>MCP Servers</label>
+                        <div class="mcp-setting-edit">
+                            <EditOutlined @click="() => { editMcpServersModal = true }" />
+                        </div>
+                    </div>
+                    <div class="mcp-server-list">
+                        <MCPServerListItem v-for="item in mcpServers" :key="item.name" :item="item" />
+                    </div>
+                </div>
+            </CollapsePanel>
+        </Collapse>
     </div>
     <Modal v-model:open="editMcpServersModal" title="编辑MCP服务器" @ok="editMcpServers" width="60%">
         <JsonEditorVue v-model="mcpServersValue" :mode="Mode.text" :mainMenuBar=false :navigationBar=false />
@@ -75,7 +110,9 @@ import { PropType, ref, h, watch, onMounted } from 'vue';
 import { SystemSettings, MCPServer, MCPServerStatus, MCPServerTool } from '../types/message';
 import MCPServerListItem from './mcp_server_list_item.vue'
 import { EditOutlined, QuestionCircleFilled } from '@ant-design/icons-vue';
-import { Modal, Alert, message } from 'ant-design-vue';
+import { Modal, message, Collapse, CollapsePanel, Slider } from 'ant-design-vue';
+import { ColorPicker } from "vue3-colorpicker";
+import "vue3-colorpicker/style.css";
 import JsonEditorVue from 'json-editor-vue'
 import { Mode } from 'vanilla-jsoneditor';
 import { getMcpServerStatus } from '../utils/requests';
@@ -92,7 +129,9 @@ const props = defineProps({
 })
 
 const settings = ref<SystemSettings>(props.systemSettings)
+const collapseActiveKey = ref<string[]>(['basic'])
 const updateSettings = () => {
+    console.log('updateSettings', settings.value)
     props.onChange(settings.value)
 }
 
@@ -168,7 +207,6 @@ onMounted(async () => {
 
 <style scoped>
 .settings-section {
-    background: #f8f9fa;
     border-radius: 8px;
 }
 
@@ -244,5 +282,16 @@ input[type="text"] {
 
 .reset-button:hover {
     background: #ff7875;
+}
+
+.divider {
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.divider label {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 10px;
 }
 </style>

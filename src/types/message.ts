@@ -20,6 +20,7 @@ interface Live2DSettings {
     offsetX: number;
     offsetY: number;
     scale: number;
+    themeColor: string;
 }
 
 interface ChatHistory {

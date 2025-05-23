@@ -20,9 +20,10 @@
     "markdown-it": "^13.0.1",
     "pixi-live2d-display": "^0.4.0",
     "pixi.js": "^6.5.1",
+    "uuid": "^10.0.0",
     "vue": "^3.3.4",
     "vue-router": "^4.2.0",
-    "uuid": "^10.0.0"
+    "vue3-colorpicker": "^2.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

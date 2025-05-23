@@ -58,6 +58,7 @@ const statusColor = computed(() => {
     border: 1px solid #ccc;
     border-radius: 5px;
     padding: 10px;
+    margin-bottom: 10px;
 }
 
 .mcp-server-list-item-header {
