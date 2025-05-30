@@ -1,0 +1,31 @@
+{
+    "debug": true,
+    "server": {
+        "pythonExec": "/Users/weibo/code/myself/live2d-assistant/venv/bin/python",
+        "serverPath": "/Users/weibo/code/myself/live2d-assistant/server/server.py",
+        "port": 3000,
+        "host": "0.0.0.0",
+        "staticPath": "/Users/weibo/code/myself/live2d-assistant/dist",
+        "tts": {
+            "enabled": false,
+            "modulePath": "/Users/weibo/code/myself/live2d-assistant/py_script/asset/zero_shot_prompt.wav",
+            "promptPath": "C:\\Users\\weibo\\Documents\\code\\live2d-project\\electron-live2d\\out\\electron-live2d-win32-x64\\www\\jinxi.wav",
+            "promptText": "欢迎来到今州，远道而来的贵客，事务繁忙，招待不周之处还请见谅。若是有什么要紧事，可以来边庭找我。",
+            "sampleRate": 16000,
+            "cosyvoiceInstallPath": "D:\\cosyvoice\\CosyVoice"
+        },
+        "llm": {
+            "provider": "ollama",
+            "api_key": "ollama",
+            "base_url": "http://localhost:11434/v1",
+            "sys_prompt": "你是一个AI助手，请根据用户的问题给出回答。"
+        },
+        "mcp_servers": [
+            {
+                "name": "music-player",
+                "transport": "sse",
+                "url": "http://127.0.0.1:8000/sse"
+            }
+        ]
+    }
+}

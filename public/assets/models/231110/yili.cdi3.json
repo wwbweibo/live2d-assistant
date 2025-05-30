@@ -1,0 +1,807 @@
+{
+	"Version": 3,
+	"Parameters": [
+		{
+			"Id": "ParamAngleX",
+			"GroupId": "",
+			"Name": "Angle_X"
+		},
+		{
+			"Id": "ParamAngleY",
+			"GroupId": "",
+			"Name": "Angle_Y"
+		},
+		{
+			"Id": "ParamAngleZ",
+			"GroupId": "",
+			"Name": "Angle_Z"
+		},
+		{
+			"Id": "ParamMouthOpenY",
+			"GroupId": "",
+			"Name": "嘴巴张合"
+		},
+		{
+			"Id": "ParamMouthForm",
+			"GroupId": "",
+			"Name": "嘴巴变形"
+		},
+		{
+			"Id": "ParamEyeLOpen",
+			"GroupId": "",
+			"Name": "Eye L_Open"
+		},
+		{
+			"Id": "ParamEyeROpen",
+			"GroupId": "",
+			"Name": "Eye R_Open"
+		},
+		{
+			"Id": "ParamEyeLSmile",
+			"GroupId": "",
+			"Name": "Eye L_Smile"
+		},
+		{
+			"Id": "ParamEyeRSmile",
+			"GroupId": "",
+			"Name": "Eye R_Smile"
+		},
+		{
+			"Id": "ParamEyeBallX",
+			"GroupId": "",
+			"Name": "Eyeballs_X"
+		},
+		{
+			"Id": "ParamEyeBallY",
+			"GroupId": "",
+			"Name": "Eyeballs_Y"
+		},
+		{
+			"Id": "ParamBrowLForm",
+			"GroupId": "",
+			"Name": "Eyebrow L_Deformation"
+		},
+		{
+			"Id": "ParamBrowRForm",
+			"GroupId": "",
+			"Name": "Eyebrow R_Deformation"
+		},
+		{
+			"Id": "ParamCheek",
+			"GroupId": "",
+			"Name": "Blush"
+		},
+		{
+			"Id": "ParamBodyAngleX",
+			"GroupId": "",
+			"Name": "Body Rotation_X"
+		},
+		{
+			"Id": "ParamBodyAngleY",
+			"GroupId": "",
+			"Name": "Body Rotation_Y"
+		},
+		{
+			"Id": "ParamBodyAngleZ",
+			"GroupId": "",
+			"Name": "Body Rotation_Z"
+		},
+		{
+			"Id": "ParamBreath",
+			"GroupId": "",
+			"Name": "Breath"
+		},
+		{
+			"Id": "ParamHairFront",
+			"GroupId": "",
+			"Name": "Hair Sway_Front"
+		},
+		{
+			"Id": "ParamHairSideR",
+			"GroupId": "",
+			"Name": "Hair Sway_Side R"
+		},
+		{
+			"Id": "ParamHairBack",
+			"GroupId": "",
+			"Name": "Hair Sway_Back"
+		},
+		{
+			"Id": "ParamEyeBallForm",
+			"GroupId": "",
+			"Name": "Eyeballs_Shrink"
+		},
+		{
+			"Id": "ParamEyeEffect",
+			"GroupId": "",
+			"Name": "Eyes_Effect"
+		},
+		{
+			"Id": "ParamHairFrontFuwa",
+			"GroupId": "",
+			"Name": "Front Hair_Fluff"
+		},
+		{
+			"Id": "ParamHairSideFuwa",
+			"GroupId": "",
+			"Name": "Side Hair_Fluff"
+		},
+		{
+			"Id": "ParamHairBackFuwa",
+			"GroupId": "",
+			"Name": "Back Hair_Fluff"
+		},
+		{
+			"Id": "ParamWing",
+			"GroupId": "",
+			"Name": "Feather Sway"
+		},
+		{
+			"Id": "ParamAccessory1",
+			"GroupId": "",
+			"Name": "Pendant Sway 1"
+		},
+		{
+			"Id": "ParamString",
+			"GroupId": "",
+			"Name": "Hood Rope Sway"
+		},
+		{
+			"Id": "ParamRobeR",
+			"GroupId": "",
+			"Name": "Robe Sway_R"
+		},
+		{
+			"Id": "ParamAllX",
+			"GroupId": "",
+			"Name": "Overall Movement_X"
+		},
+		{
+			"Id": "ParamAllY",
+			"GroupId": "",
+			"Name": "Overall Movement_Y"
+		},
+		{
+			"Id": "ParamAllRotate",
+			"GroupId": "",
+			"Name": "Overall Rotation"
+		},
+		{
+			"Id": "ParamAccessory2",
+			"GroupId": "",
+			"Name": "Pendant Sway 2"
+		},
+		{
+			"Id": "ParamRobeFuwa",
+			"GroupId": "",
+			"Name": "Robe Flap"
+		},
+		{
+			"Id": "ParamHatBrim",
+			"GroupId": "",
+			"Name": "Hat Brim Sway"
+		},
+		{
+			"Id": "ParamArmRA01",
+			"GroupId": "",
+			"Name": "Arm R A_Shoulder Rotation"
+		},
+		{
+			"Id": "ParamArmRA02",
+			"GroupId": "",
+			"Name": "Arm R A_Elbow Rotation"
+		},
+		{
+			"Id": "ParamArmRA03",
+			"GroupId": "",
+			"Name": "Arm R A_Wrist Rotation"
+		},
+		{
+			"Id": "ParamHandRA",
+			"GroupId": "",
+			"Name": "Hand R A"
+		},
+		{
+			"Id": "ParamArmLA01",
+			"GroupId": "",
+			"Name": "Arm L A_Shoulder Rotation"
+		},
+		{
+			"Id": "ParamArmLA02",
+			"GroupId": "",
+			"Name": "Arm L A_Elbow Rotation"
+		},
+		{
+			"Id": "ParamArmLA03",
+			"GroupId": "",
+			"Name": "Arm L A_Wrist Rotation"
+		},
+		{
+			"Id": "ParamHandLA",
+			"GroupId": "",
+			"Name": "Hand L A"
+		},
+		{
+			"Id": "ParamArmLB01",
+			"GroupId": "",
+			"Name": "Arm L B_Shoulder Rotation"
+		},
+		{
+			"Id": "ParamArmLB02",
+			"GroupId": "",
+			"Name": "Arm L B_Elbow Rotation"
+		},
+		{
+			"Id": "ParamArmLB03",
+			"GroupId": "",
+			"Name": "Arm L B_Wrist Rotation"
+		},
+		{
+			"Id": "ParamHandLB",
+			"GroupId": "",
+			"Name": "Hand L B"
+		},
+		{
+			"Id": "ParamArmRB01",
+			"GroupId": "",
+			"Name": "Arm R B_Shoulder Rotation"
+		},
+		{
+			"Id": "ParamArmRB02",
+			"GroupId": "",
+			"Name": "Arm R B_Elbow Rotation"
+		},
+		{
+			"Id": "ParamArmRB03",
+			"GroupId": "",
+			"Name": "Arm R B_Wrist Rotation"
+		},
+		{
+			"Id": "ParamHandRB",
+			"GroupId": "",
+			"Name": "Hand R B"
+		},
+		{
+			"Id": "ParamWandRotate",
+			"GroupId": "",
+			"Name": "Wand Rotation"
+		},
+		{
+			"Id": "ParamHairSideL",
+			"GroupId": "",
+			"Name": "Hair Sway_Side L"
+		},
+		{
+			"Id": "ParamRobeL",
+			"GroupId": "",
+			"Name": "Robe Sway_L"
+		},
+		{
+			"Id": "ParamAura",
+			"GroupId": "",
+			"Name": "Aura"
+		},
+		{
+			"Id": "ParamAuraColor",
+			"GroupId": "",
+			"Name": "Aura_Color Variation"
+		},
+		{
+			"Id": "ParamHealLight",
+			"GroupId": "",
+			"Name": "Heal Magic Light"
+		},
+		{
+			"Id": "ParamHealOn",
+			"GroupId": "",
+			"Name": "Heal Magic Light_Display"
+		},
+		{
+			"Id": "ParamSmoke",
+			"GroupId": "",
+			"Name": "Smoke"
+		},
+		{
+			"Id": "ParamInkDrop",
+			"GroupId": "",
+			"Name": "Dropping Ink"
+		},
+		{
+			"Id": "ParamInkDropOn",
+			"GroupId": "",
+			"Name": "Dropping Ink_Display"
+		},
+		{
+			"Id": "ParamFaceInkOn",
+			"GroupId": "",
+			"Name": "Face Ink_Display"
+		},
+		{
+			"Id": "ParamWandInk",
+			"GroupId": "",
+			"Name": "Wand Ink"
+		},
+		{
+			"Id": "ParamHeartColorRainbow",
+			"GroupId": "",
+			"Name": "Heart Fail_Rainbow"
+		},
+		{
+			"Id": "ParamHeartColorLight",
+			"GroupId": "",
+			"Name": "Heart_Color Variation"
+		},
+		{
+			"Id": "ParamHeartColorHeal",
+			"GroupId": "",
+			"Name": "Heart Hea_Green"
+		},
+		{
+			"Id": "ParamHeartBackHealOn",
+			"GroupId": "",
+			"Name": "Back Heart Heal_Display"
+		},
+		{
+			"Id": "ParamHeartHealOn",
+			"GroupId": "",
+			"Name": "Heart Heal_Display"
+		},
+		{
+			"Id": "ParamHeartDrow",
+			"GroupId": "",
+			"Name": "Heart_Drawing"
+		},
+		{
+			"Id": "ParamHeartLight",
+			"GroupId": "",
+			"Name": "Light_Star"
+		},
+		{
+			"Id": "ParamHeartMissOn",
+			"GroupId": "",
+			"Name": "Heart Fail_Display"
+		},
+		{
+			"Id": "ParamHeartBackMissOn",
+			"GroupId": "",
+			"Name": "Back Heart Fail_Display"
+		},
+		{
+			"Id": "ParamAuraOn",
+			"GroupId": "",
+			"Name": "Aura_Display"
+		},
+		{
+			"Id": "ParamHatForm",
+			"GroupId": "",
+			"Name": "Hat Deformation"
+		},
+		{
+			"Id": "ParamInkDropRotate",
+			"GroupId": "",
+			"Name": "Dropping Ink_Rotation"
+		},
+		{
+			"Id": "ParamHeartLightColor",
+			"GroupId": "",
+			"Name": "Light_Color Variation"
+		},
+		{
+			"Id": "ParamExplosionLightCharge",
+			"GroupId": "",
+			"Name": "Explosion Light Gathering"
+		},
+		{
+			"Id": "ParamExplosionChargeOn",
+			"GroupId": "",
+			"Name": "Explosion Light Gathering_Display"
+		},
+		{
+			"Id": "ParamMagicPositionX",
+			"GroupId": "",
+			"Name": "Magic Position X"
+		},
+		{
+			"Id": "ParamMagicPositionY",
+			"GroupId": "",
+			"Name": "Magic Position Y"
+		},
+		{
+			"Id": "ParamExplosion",
+			"GroupId": "",
+			"Name": "Explosion"
+		},
+		{
+			"Id": "ParamLeftShoulderUp",
+			"GroupId": "",
+			"Name": "Shoulder L_Y"
+		},
+		{
+			"Id": "ParamRightShoulderUp",
+			"GroupId": "",
+			"Name": "Shoulder R_Y"
+		},
+		{
+			"Id": "ParamHeartLightOn",
+			"GroupId": "",
+			"Name": "Light_Display"
+		},
+		{
+			"Id": "ParamSmokeOn",
+			"GroupId": "",
+			"Name": "Smoke_Display"
+		},
+		{
+			"Id": "ParamWandInkColorRainbow",
+			"GroupId": "",
+			"Name": "Wand Ink_Rainbow"
+		},
+		{
+			"Id": "ParamWandInkColorHeal",
+			"GroupId": "",
+			"Name": "Wand Ink_Green"
+		},
+		{
+			"Id": "ParamHeartSize",
+			"GroupId": "",
+			"Name": "Heart_Scaling"
+		},
+		{
+			"Id": "ParamAllColor",
+			"GroupId": "",
+			"Name": "Overall Color"
+		},
+		{
+			"Id": "ParamEyeRForm",
+			"GroupId": "",
+			"Name": "Eye R_Deformation"
+		},
+		{
+			"Id": "ParamEyeLForm",
+			"GroupId": "",
+			"Name": "Eye L_Deformation"
+		},
+		{
+			"Id": "ParamArmRB02Y",
+			"GroupId": "",
+			"Name": "Arm R B_Arm Y"
+		},
+		{
+			"Id": "ParamExplosionOn",
+			"GroupId": "",
+			"Name": "Explosion Display"
+		},
+		{
+			"Id": "Param_Angle_Rotation_1_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[0]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_2_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[1]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_3_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[2]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_4_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[3]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_5_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[4]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_6_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[5]L_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_7_L_hair_1",
+			"GroupId": "ParamGroup",
+			"Name": "[6]L_hair_1"
+		},
+		{
+			"Id": "Param_liuhai",
+			"GroupId": "",
+			"Name": "刘海物理"
+		},
+		{
+			"Id": "Param_Angle_Rotation_1_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[0]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_2_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[1]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_3_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[2]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_4_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[3]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_5_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[4]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_6_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[5]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_7_R_hair_1",
+			"GroupId": "ParamGroup2",
+			"Name": "[6]R_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_1_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[0]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_2_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[1]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_3_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[2]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_4_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[3]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_5_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[4]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_6_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[5]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_7_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[6]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_8_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[7]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_9_back_hair_1",
+			"GroupId": "ParamGroup3",
+			"Name": "[8]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_10_back_hair_1",
+			"GroupId": "ParamGroup4",
+			"Name": "[9]back_hair_1"
+		},
+		{
+			"Id": "Param_Angle_Rotation_11_back_hair_1",
+			"GroupId": "ParamGroup4",
+			"Name": "[10]back_hair_1"
+		}
+	],
+	"ParameterGroups": [
+		{
+			"Id": "ParamGroup",
+			"GroupId": "",
+			"Name": "L_hair_1"
+		},
+		{
+			"Id": "ParamGroup2",
+			"GroupId": "",
+			"Name": "R_hair_1"
+		},
+		{
+			"Id": "ParamGroup3",
+			"GroupId": "",
+			"Name": "back_hair_1"
+		},
+		{
+			"Id": "ParamGroup4",
+			"GroupId": "",
+			"Name": "back_hair_1"
+		}
+	],
+	"Parts": [
+		{
+			"Id": "Part7",
+			"Name": "yili.psd(未找到对应图层)"
+		},
+		{
+			"Id": "Part3",
+			"Name": "yili.psd(未找到对应图层)"
+		},
+		{
+			"Id": "Part2",
+			"Name": "yili.psd(未找到对应图层)"
+		},
+		{
+			"Id": "Part",
+			"Name": "yili.psd(未找到对应图层)"
+		},
+		{
+			"Id": "PartCore",
+			"Name": "Core"
+		},
+		{
+			"Id": "PartInk",
+			"Name": "Ink"
+		},
+		{
+			"Id": "PartSmoke",
+			"Name": "Smoke"
+		},
+		{
+			"Id": "PartExplosionLight",
+			"Name": "Explosion Light"
+		},
+		{
+			"Id": "Partaura",
+			"Name": "Aura"
+		},
+		{
+			"Id": "PartLight",
+			"Name": "Light"
+		},
+		{
+			"Id": "PartHeart",
+			"Name": "Heart"
+		},
+		{
+			"Id": "PartHat",
+			"Name": "Hat"
+		},
+		{
+			"Id": "PartHairSide",
+			"Name": "Side Hair"
+		},
+		{
+			"Id": "PartHairFront",
+			"Name": "Front Hair"
+		},
+		{
+			"Id": "PartHairBack",
+			"Name": "Back Hair"
+		},
+		{
+			"Id": "PartBrow",
+			"Name": "Eyebrows"
+		},
+		{
+			"Id": "PartEye",
+			"Name": "Eyes"
+		},
+		{
+			"Id": "PartCheek",
+			"Name": "Cheeks"
+		},
+		{
+			"Id": "PartNose",
+			"Name": "Nose"
+		},
+		{
+			"Id": "PartMouth",
+			"Name": "Mouth"
+		},
+		{
+			"Id": "PartFace",
+			"Name": "Face"
+		},
+		{
+			"Id": "PartEar",
+			"Name": "Ears"
+		},
+		{
+			"Id": "PartNeck",
+			"Name": "Neck"
+		},
+		{
+			"Id": "PartRobe",
+			"Name": "Robe"
+		},
+		{
+			"Id": "PartHoodie",
+			"Name": "Hoodie"
+		},
+		{
+			"Id": "PartLeg",
+			"Name": "Legs"
+		},
+		{
+			"Id": "PartArmLA",
+			"Name": "Arm L A"
+		},
+		{
+			"Id": "PartArmRA",
+			"Name": "Arm R A"
+		},
+		{
+			"Id": "PartArmLB",
+			"Name": "Arm L B"
+		},
+		{
+			"Id": "PartArmRB",
+			"Name": "Arm R B"
+		},
+		{
+			"Id": "necks2",
+			"Name": "necks"
+		},
+		{
+			"Id": "R_hair_1_Skinning",
+			"Name": "R_hair_1(蒙皮)"
+		},
+		{
+			"Id": "Part5",
+			"Name": "R_hair_1(旋转)"
+		},
+		{
+			"Id": "L_hair_1_Skinning",
+			"Name": "L_hair_1(蒙皮)"
+		},
+		{
+			"Id": "Part4",
+			"Name": "L_hair_1(旋转)"
+		},
+		{
+			"Id": "back_hair_1_Skinning2",
+			"Name": "back_hair_1(蒙皮)"
+		},
+		{
+			"Id": "Part8",
+			"Name": "back_hair_1(旋转)"
+		},
+		{
+			"Id": "back_hair_1_Skinning",
+			"Name": "back_hair_1(蒙皮)"
+		},
+		{
+			"Id": "Part6",
+			"Name": "back_hair_1(旋转)"
+		},
+		{
+			"Id": "PartEyeBall",
+			"Name": "Eyeballs"
+		},
+		{
+			"Id": "PartWandA",
+			"Name": "Wand A"
+		},
+		{
+			"Id": "PartWandB",
+			"Name": "Wand B"
+		}
+	],
+	"CombinedParameters": [
+		[
+			"ParamAngleX",
+			"ParamAngleY"
+		],
+		[
+			"ParamMouthOpenY",
+			"ParamMouthForm"
+		]
+	]
+}
