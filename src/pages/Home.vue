@@ -420,17 +420,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.chat-modal {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 600px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 20px;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
 .home {
   width: 100vw;
   height: 100vh;
@@ -439,104 +428,6 @@ onUnmounted(() => {
   left: 0;
   background-size: cover;
   background-position: center;
-}
-
-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.settings-button {
-  position: absolute;
-  right: 20px;
-  top: 20px;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-}
-
-.chat-button {
-  position: absolute;
-  right: 20px;
-  top: 100px;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.settings-modal {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 400px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 20px;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.close-button {
-  margin-top: auto;
-  padding: 10px;
-  background: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.close-button:hover {
-  background: #3aa876;
-}
-
-.button-group {
-  display: flex;
-  gap: 10px;
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: auto;
-}
-
-.save-button {
-  flex: 0 0 auto;
-  padding: 8px 16px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.save-button:hover {
-  background: #45a049;
-}
-
-.close-button {
-  flex: 0 0 auto;
-  padding: 8px 16px;
-  background: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.close-button:hover {
-  background: #3aa876;
 }
 
 .ai-assistant-overlay {
@@ -551,18 +442,18 @@ canvas {
   flex-direction: row;
 }
 
-.ai-assistant-container-left {
+/* .ai-assistant-container-left {
   width: 280px;
   height: 100%;
-  background: rgba(30, 30, 30, 0.85);
+  background: rgba(255, 255, 255, 1);
   display: flex;
   flex-direction: column;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-  color: #fff;
+  color: #fff !important;
   transition: all 0.3s ease;
   position: relative;
   z-index: 1000;
-}
+} */
 
 .assistant-title {
   width: 100%;
@@ -639,10 +530,10 @@ canvas {
 .ai-assistant-container-right {
   flex: 1;
   height: 100%;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0);
   border-radius: 0 0 0 20px;
   box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(3px);
 }
 
 .conversation-new-button {
@@ -760,11 +651,11 @@ canvas {
 .ai-assistant-container-left {
   width: 280px;
   height: 100%;
-  background: rgba(30, 30, 30, 0.85);
+  background: rgba(200, 200, 200, 0.85);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-  color: #fff;
+  /* border-right: 1px solid rgba(0, 0, 0, 1); */
+  /* box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); */
   transition: all 0.3s ease;
   position: relative;
   z-index: 1000;
@@ -852,4 +743,7 @@ canvas {
     font-size: 13px;
   }
 }
+/* .ant-conversations-item {
+  color: #fff !important;
+} */
 </style>

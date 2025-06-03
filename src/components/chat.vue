@@ -471,9 +471,9 @@ const handleSaveConversationLabel = () => {
 }
 
 .chat-sender {
-  width: 80%;
+  /* width: 80%; */
   align-self: center;
-  margin-bottom: 24px;
+  margin-bottom: 10px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   background-color: #fff;
