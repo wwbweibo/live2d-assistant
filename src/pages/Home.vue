@@ -1,11 +1,31 @@
 <template>
   <div class="home">
     <canvas ref="live2dCanvas"></canvas>
+    
+    <!-- 移动端菜单切换按钮 -->
+    <div class="mobile-menu-toggle" @click="toggleSidebar" v-if="isMobile">
+      <div class="hamburger" :class="{ active: sidebarVisible }">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+    
     <div class="ai-assistant-overlay">
-      <div class="ai-assistant-container-left">
+      <!-- 侧边栏遮罩层（移动端） -->
+      <div v-if="isMobile && sidebarVisible" class="sidebar-overlay" @click="closeSidebar"></div>
+      
+      <div class="ai-assistant-container-left" :class="{ 
+        'mobile-hidden': isMobile && !sidebarVisible,
+        'mobile-visible': isMobile && sidebarVisible 
+      }">
         <div class="assistant-title">
           <div class="assistant-title-text">
             AI助手
+          </div>
+          <!-- 桌面端折叠按钮 -->
+          <div v-if="!isMobile" class="sidebar-collapse-btn" @click="toggleSidebar">
+            <i class="fas" :class="sidebarCollapsed ? 'fa-expand' : 'fa-compress'"></i>
           </div>
         </div>
         <div class="conversation-list">
@@ -13,7 +33,7 @@
             <div class="conversation-new-button-icon">
               <FormOutlined />
             </div>
-            <div class="conversation-new-button-text">
+            <div class="conversation-new-button-text" v-if="!sidebarCollapsed">
               新对话
             </div>
           </div>
@@ -31,7 +51,7 @@
             <div class="assistant-setting-item-icon">
               <i class="fas fa-cog"></i>
             </div>
-            <div class="assistant-setting-item-text">
+            <div class="assistant-setting-item-text" v-if="!sidebarCollapsed">
               设置
             </div>
           </div>
@@ -72,6 +92,12 @@ const live2dCanvas = ref<HTMLCanvasElement | null>(null)
 let app: PIXI.Application | null = null
 let model: any = null
 const showSettings = ref(false)
+
+// 响应式侧边栏状态
+const sidebarVisible = ref(true)
+const sidebarCollapsed = ref(false)
+const isMobile = ref(false)
+
 const STORAGE_KEY = 'live2d-viewer-settings'
 const STORAGE_KEY_CONVERSATIONS = 'live2d-viewer-conversations'
 const conversationItems = ref<Conversation[]>([])
@@ -95,6 +121,7 @@ const systemSettings = reactive<SystemSettings>({
     apiKey: undefined,
     baseUrl: undefined,
     mcpServers: '',
+    agents: '',
   },
   live2DSettings: {
     modelPath: 'assets/models/Senko_Normals/senko.model3.json',
@@ -334,11 +361,38 @@ const updateModel = async () => {
   }
 }
 
+// 响应式侧边栏函数
+const toggleSidebar = () => {
+  if (isMobile.value) {
+    sidebarVisible.value = !sidebarVisible.value
+  } else {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+  }
+}
+
+const closeSidebar = () => {
+  if (isMobile.value) {
+    sidebarVisible.value = false
+  }
+}
+
+// 检查屏幕尺寸
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    sidebarVisible.value = true
+  }
+}
+
 onMounted(async () => {
   loadSettings()
   updateBackground()
   updateConfig(systemSettings)
   loadConversations()
+
+  // 初始化响应式检查
+  checkScreenSize()
+  window.addEventListener('resize', checkScreenSize)
 
   if (!live2dCanvas.value) {
     console.error('Canvas element not found!')
@@ -358,6 +412,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkScreenSize)
   if (app) {
     app.destroy(true)
   }
@@ -433,7 +488,6 @@ canvas {
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-
 .close-button {
   margin-top: auto;
   padding: 10px;
@@ -491,110 +545,311 @@ canvas {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.2);
   z-index: 1000;
   display: flex;
   flex-direction: row;
 }
 
 .ai-assistant-container-left {
-  width: 20%;
+  width: 280px;
   height: 100%;
-  background: rgba(200, 200, 200, 0.8);
+  background: rgba(30, 30, 30, 0.85);
   display: flex;
   flex-direction: column;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  color: #fff;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1000;
 }
 
 .assistant-title {
   width: 100%;
-  height: 7%;
-  /* background: rgba(255, 255, 255, 0); */
+  height: 60px;
   padding: 10px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .assistant-title-text {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   font-family: 'Arial', sans-serif;
+  color: #fff;
 }
 
 .conversation-list {
   width: 100%;
   height: 100%;
-  /* background: rgba(255, 255, 255, 0); */
   overflow-y: auto;
+  padding: 8px 0;
+}
+
+.conversation-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.conversation-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .assistant-setting-divider {
   width: 100%;
   height: 1px;
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .assistant-setting-item {
   width: 100%;
-  height: 70px;
-  padding-left: 20px;
-  padding-bottom: 10px;
-  /* background: rgba(255, 255, 255, 0); */
+  height: 50px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: start;
+  transition: background-color 0.2s ease;
+}
+
+.assistant-setting-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .assistant-setting-item-icon {
   width: 20px;
   height: 20px;
   margin-right: 10px;
-  font-size: 20px;
-  font-weight: bold;
-  font-family: 'Arial', sans-serif;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .assistant-setting-item-text {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 500;
   font-family: 'Arial', sans-serif;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .assistant-setting {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: start;
+  cursor: pointer;
 }
 
-
 .ai-assistant-container-right {
-  width:80%;
+  flex: 1;
   height: 100%;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 0 0 0 20px;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .conversation-new-button {
-  height: 50px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 10px;
-  border-radius: 10px;
+  margin: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .conversation-new-button:hover {
-  background: rgba(0,0,0, 0.1);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .conversation-new-button-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 10px;
-  font-size: 20px;
-  font-weight: bold;
-  font-family: 'Arial', sans-serif;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
 }
 
+.conversation-new-button-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 移动端菜单切换按钮 */
+.mobile-menu-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1100;
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.hamburger {
+  width: 24px;
+  height: 18px;
+  position: relative;
+  transform: rotate(0deg);
+  transition: 0.3s ease-in-out;
+  cursor: pointer;
+}
+
+.hamburger span {
+  display: block;
+  position: absolute;
+  height: 2px;
+  width: 100%;
+  background: #fff;
+  border-radius: 2px;
+  opacity: 1;
+  left: 0;
+  transform: rotate(0deg);
+  transition: 0.3s ease-in-out;
+}
+
+.hamburger span:nth-child(1) {
+  top: 0px;
+}
+
+.hamburger span:nth-child(2) {
+  top: 8px;
+}
+
+.hamburger span:nth-child(3) {
+  top: 16px;
+}
+
+.hamburger.active span:nth-child(1) {
+  top: 8px;
+  transform: rotate(135deg);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+  left: -60px;
+}
+
+.hamburger.active span:nth-child(3) {
+  top: 8px;
+  transform: rotate(-135deg);
+}
+
+/* 侧边栏遮罩层 */
+.sidebar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* 侧边栏响应式样式 */
+.ai-assistant-container-left {
+  width: 280px;
+  height: 100%;
+  background: rgba(30, 30, 30, 0.85);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  color: #fff;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1000;
+}
+
+/* 桌面端折叠状态 */
+.ai-assistant-container-left.collapsed {
+  width: 60px;
+}
+
+.ai-assistant-container-left.collapsed .conversation-new-button-text,
+.ai-assistant-container-left.collapsed .assistant-setting-item-text {
+  display: none;
+}
+
+/* 移动端隐藏/显示 */
+.ai-assistant-container-left.mobile-hidden {
+  transform: translateX(-100%);
+}
+
+.ai-assistant-container-left.mobile-visible {
+  transform: translateX(0);
+}
+
+.assistant-title {
+  width: 100%;
+  height: 60px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-collapse-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* 媒体查询 */
+@media (max-width: 768px) {
+  .ai-assistant-container-left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100%;
+    z-index: 1000;
+  }
+  
+  .ai-assistant-container-right {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-assistant-container-left {
+    width: 260px;
+  }
+  
+  .welcome-title {
+    font-size: 24px;
+  }
+  
+  .welcome-description {
+    font-size: 14px;
+  }
+  
+  .suggestion-item {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
 </style>

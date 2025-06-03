@@ -48,29 +48,45 @@ function handleClose() {
 .tab-container {
   display: flex;
   gap: 2px;
-  background: #eee;
-  padding: 2px;
-  border-radius: 6px;
-  margin-bottom: 16px;
+  background: #f5f7fa;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+
 .tab-item {
   flex: 1;
-  padding: 8px 16px;
+  padding: 10px 16px;
   text-align: center;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
   color: #666;
   transition: all 0.3s;
+  font-weight: 500;
 }
+
+.tab-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.8);
+  color: #444;
+}
+
 .tab-item.active {
   background: white;
-  color: #333;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: #1890ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
 }
 
 .tab-content {
   animation: fadeIn 0.3s ease-in-out;
+  padding: 0 4px;
 }
+
+.settings-content {
+  padding: 0 10px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px);}
   to { opacity: 1; transform: translateY(0);}

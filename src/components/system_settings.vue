@@ -256,91 +256,125 @@ onMounted(async () => {
 
 <style scoped>
 .settings-section {
-    border-radius: 8px;
+    border-radius: 12px;
+    padding: 4px;
 }
 
 .setting-item {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 label {
     display: block;
-    margin-bottom: 8px;
-    color: #555;
+    margin-bottom: 10px;
+    color: #444;
+    font-weight: 500;
+    font-size: 14px;
 }
 
 input[type="text"],
 select {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
     font-size: 14px;
+    transition: all 0.3s;
+    background-color: white;
+}
+
+input[type="text"]:hover,
+select:hover {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+input[type="text"]:focus,
+select:focus {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    outline: none;
 }
 
 select {
-    background-color: white;
     cursor: pointer;
-}
-
-select:hover {
-    border-color: #40a9ff;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
 }
 
 .system-prompt-textarea {
     width: 100%;
-    height: 100px;
+    min-height: 120px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.system-prompt-textarea:hover {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
 .setting-header {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .setting-control {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
 }
 
-label {
-    display: block;
-    margin-bottom: 8px;
-    color: #555;
-}
-
-input[type="text"] {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
 .reset-button {
-    padding: 4px 8px;
+    padding: 6px 12px;
     background: #ff4d4f;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
+    transition: all 0.3s;
 }
 
 .reset-button:hover {
     background: #ff7875;
+    box-shadow: 0 2px 6px rgba(255, 77, 79, 0.2);
 }
 
 .divider {
-    margin-bottom: 10px;
-    border-bottom: 1px solid #ddd;
+    margin: 16px 0;
+    border-bottom: 1px solid #eee;
 }
 
 .divider label {
     font-size: 16px;
-    font-weight: bold;
-    margin-top: 10px;
+    font-weight: 600;
+    margin-top: 12px;
+    color: #333;
+}
+
+.mcp-server-list, .agent-setting-list {
+    background: #f9fafc;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    border: 1px solid #eaedf1;
+}
+
+.mcp-setting-edit, .mcp-setting-tooltip {
+    margin-left: 8px;
+    color: #1890ff;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.mcp-setting-edit:hover {
+    opacity: 0.8;
 }
 </style>

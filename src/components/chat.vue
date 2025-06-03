@@ -13,16 +13,60 @@
         <EditOutlined @click="handleEditConversationLabel" ref="chatHeaderTitleInputRef" />
       </div>
     </div>
-    <div class="messages" ref="messagesRef">
+    
+    <!-- 空状态或欢迎界面 -->
+    <div v-if="localConversation.messages.length === 0" class="welcome-container">
+      <div class="welcome-content">
+        <div class="welcome-icon">
+          <AndroidOutlined />
+        </div>
+        <h2 class="welcome-title">{{ systemSettings?.assistantSettings.assistantName || 'AI助手' }} 为您服务</h2>
+        <p class="welcome-description">我是您的智能助手，可以帮助您解答问题、处理任务。开始对话吧！</p>
+        <div class="welcome-suggestions">
+          <div class="suggestion-item" @click="sendSuggestion('介绍一下你自己')">
+            <UserOutlined />
+            <span>介绍一下你自己</span>
+          </div>
+          <div class="suggestion-item" @click="sendSuggestion('你能帮我做什么？')">
+            <QuestionCircleOutlined />
+            <span>你能帮我做什么？</span>
+          </div>
+          <div class="suggestion-item" @click="sendSuggestion('今天天气怎么样？')">
+            <i class="fas fa-cloud-sun"></i>
+            <span>今天天气怎么样？</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 消息列表 -->
+    <div v-else class="messages" ref="messagesRef">
       <Flex gap="middle" vertical>
         <BubbleList :roles="roles" :items="message2BubbleListItem()" />
+        
+        <!-- 加载状态指示器 -->
+        <div v-if="isMessageLoading" class="loading-indicator">
+          <div class="loading-content">
+            <div class="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span class="loading-text">{{ props.systemSettings?.assistantSettings.assistantName || 'AI助手' }} 正在思考...</span>
+          </div>
+        </div>
       </Flex>
     </div>
-    <Sender class="chat-sender" 
-          @submit="sendMessage" 
-          v-model:value="value"
-          :footer="renderFooter"
-          />
+
+    <!-- 输入区域 -->
+    <div class="chat-input-container">
+      <Sender class="chat-sender" 
+            @submit="sendMessage" 
+            v-model:value="value"
+            :footer="renderFooter"
+            :placeholder="getInputPlaceholder()"
+            />
+    </div>
   </div>
 </template>
 
@@ -112,6 +156,23 @@ const renderFooter = (components) => {
   ])
 }
 
+// 获取输入框占位符文本
+const getInputPlaceholder = () => {
+  if (waiting_for_input.value) {
+    return '请回答上面的问题...'
+  }
+  if (isAgent.value) {
+    return '请输入您的任务，我会调用相应的工具来帮助您...'
+  }
+  return `与 ${props.systemSettings?.assistantSettings.assistantName || 'AI助手'} 对话...`
+}
+
+// 发送建议消息
+const sendSuggestion = (suggestion: string) => {
+  value.value = suggestion
+  sendMessage()
+}
+
 defineOptions();
 
 // 定义组件参数
@@ -134,6 +195,7 @@ const value = ref('');
 const localConversation = ref<Conversation>(props.conversation)
 const conversationRef = toRef(props, 'conversation')
 const waiting_for_input = ref(false)
+const isMessageLoading = ref(false)
 
 const handleMessageChange = (newVal: Message[]) => {
   if (localConversation.value.key === "") {
@@ -199,6 +261,7 @@ const sendMessage = async () => {
 }
 
 const sendMessageToOllama = async (messages: ChatHistory[]) => {
+  isMessageLoading.value = true
   const waiting_massage = {
     id: localConversation.value.messages.length + 1,
     role: 'assistant',
@@ -245,6 +308,7 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
           // waiting_massage is always last one, remove last message, then add a new assistant message
           localConversation.value.messages.pop()
           waiting_removed = true
+          isMessageLoading.value = false
           localConversation.value.messages.push({
             id: localConversation.value.messages.length + 1,
             role: 'assistant',
@@ -282,6 +346,7 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
         if (!waiting_removed) {
           localConversation.value.messages.pop()
           waiting_removed = true
+          isMessageLoading.value = false
         }
         // 特殊处理 request_user_input 工具调用
         if (data.content.some(c => c.name === 'request_user_input')) {
@@ -314,11 +379,14 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
       }
     }
   }).then(() => {
+    isMessageLoading.value = false
     localConversation.value.updatedAt = new Date().getTime()
     if (localConversation.value.label === '新对话') {
       localConversation.value.label = localConversation.value.messages[0].content as string
     }
     props.onNewMessage(localConversation.value)
+  }).catch(() => {
+    isMessageLoading.value = false
   })
 }
 
@@ -365,61 +433,265 @@ const handleSaveConversationLabel = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(245, 245, 245, 0.95));
 }
 
 .messages {
   width: 100%;
   height: 100%;
-  /* padding: 20px; */
-  /* margin-top: 10px; */
-  padding-left: 10%;
-  padding-right: 10%;
+  padding: 20px 10%;
   align-self: center;
   overflow-y: auto;
   overflow-x: hidden;
-  /* 滚动条样式 */
   scrollbar-width: thin;
 }
 
+.messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
 .message {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .chat-sender {
   width: 80%;
-  /* height: 100px; */
   align-self: center;
-  margin-bottom: 20px;
-  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
   background-color: #fff;
+  transition: box-shadow 0.3s ease;
 }
+
+.chat-sender:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
 .chat-header {
-  /* width: 100%; */
-  height: 50px;
-  margin: 10px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
-  background-color: rgba(255, 255, 255, 0.5);
+  height: 60px;
+  margin: 16px 16px 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.chat-header:hover {
+  transform: translateY(-2px);
 }
 
 .chat-header-title {
   font-size: 16px;
   font-weight: 500;
-  color: #000;
+  color: #333;
   text-align: center;
 }
 
 .chat-header-actions {
   margin-left: 10px;
   margin-right: 10px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.chat-header-actions:hover {
+  color: #1890ff;
 }
 
 .chat-header-title-input {
   width: 100%;
   height: 100%;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+}
+
+.welcome-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  min-height: 400px;
+}
+
+.welcome-content {
+  text-align: center;
+  max-width: 600px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(30px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.welcome-icon {
+  font-size: 56px;
+  margin-bottom: 24px;
+  color: #1890ff;
+  background: rgba(24, 144, 255, 0.1);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.3);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  }
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+  background: linear-gradient(135deg, #1890ff, #722ed1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-description {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.welcome-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(24, 144, 255, 0.05);
+  border: 1px solid rgba(24, 144, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #1890ff;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.suggestion-item:hover {
+  background: rgba(24, 144, 255, 0.1);
+  border-color: rgba(24, 144, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.suggestion-item i,
+.suggestion-item .anticon {
+  font-size: 16px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.chat-input-container {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.9), transparent);
+}
+
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.loading-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #1890ff;
+  animation: blink 1.4s infinite both;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes blink {
+  0%, 80%, 100% {
+    transform: scale(0.5);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  margin-top: 16px;
 }
 </style>

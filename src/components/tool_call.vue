@@ -62,80 +62,106 @@ return args
 <style scoped>
 .tool-call-card {
   background: #fff;
-  border-radius: 12px;
-  /* box-shadow: 0 2px 12px rgba(0,0,0,0.08); */
-  padding: 20px 24px;
-  margin: 16px 0;
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin: 20px 0;
   max-width: 600px;
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tool-call-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 .tool-call-header {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .tool-call-icon {
-  background: #f5f7fa;
+  background: #f0f5ff;
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 24px;
   color: #1890ff;
-  margin-right: 12px;
+  margin-right: 14px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
 }
 
 .tool-call-title {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   color: #222;
+  letter-spacing: 0.3px;
 }
 
 .tool-call-section {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .tool-call-label {
-  font-weight: bold;
-  color: #666;
-  min-width: 56px;
+  font-weight: 600;
+  color: #555;
+  min-width: 60px;
+  margin-right: 4px;
 }
 
 .tool-call-func {
   font-family: 'Fira Mono', 'Consolas', monospace;
-  color: #333;
-  font-size: 16px;
+  color: #1890ff;
+  font-size: 15px;
   margin-left: 4px;
+  padding: 2px 6px;
+  background: rgba(24, 144, 255, 0.08);
+  border-radius: 4px;
 }
 
 .tool-call-args, .tool-call-response {
-  background: #f6f8fa;
-  border-radius: 6px;
-  padding: 8px 12px;
+  background: #f9fafc;
+  border-radius: 8px;
+  padding: 12px 16px;
   font-family: 'Fira Mono', 'Consolas', monospace;
   font-size: 14px;
-  color: #444;
-  margin: 0 0 0 4px;
+  color: #333;
+  margin: 8px 0 0;
   white-space: pre-wrap;
   word-break: break-all;
   flex: 1;
   max-width: 100%;
   overflow-x: auto;
+  border: 1px solid #eaedf1;
+  line-height: 1.5;
 }
+
 .collapse-toggle {
   cursor: pointer;
   color: #1890ff;
-  margin-left: 8px;
+  margin-left: 10px;
   font-size: 13px;
   user-select: none;
+  transition: opacity 0.2s ease;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(24, 144, 255, 0.08);
+}
+
+.collapse-toggle:hover {
+  opacity: 0.8;
+  background: rgba(24, 144, 255, 0.15);
 }
 </style>
