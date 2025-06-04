@@ -1,7 +1,9 @@
 const fs = require('fs')
 const path = require('path')
+const logger = require('./logger')
 
 function isVirtualEnv(pythonExecPath) {
+    logger.info('isVirtualEnv pythonExecPath:', pythonExecPath)
     const venvDir = path.dirname(path.dirname(pythonExecPath))
     try {
         return fs.existsSync(path.join(venvDir, 'pyvenv.cfg'))
@@ -11,17 +13,18 @@ function isVirtualEnv(pythonExecPath) {
 }
 
 function resolvePythonExecPath(pythonExecPath) {
-    if (process.platform !== 'win32') {
-        try {
-            // 仅当不是虚拟环境时解析真实路径
-            if (!isVirtualEnv(pythonExecPath)) {
-                pythonExecPath = fs.realpathSync.native(pythonExecPath)
-            }
-            return pythonExecPath
-        } catch (e) {
-            throw e
-        }
-    }
+    // if (process.platform !== 'win32') {
+    //     try {
+    //         // 仅当不是虚拟环境时解析真实路径
+    //         if (!isVirtualEnv(pythonExecPath)) {
+    //             logger.info('resolvePythonExecPath pythonExecPath:', pythonExecPath)
+    //             pythonExecPath = fs.realpathSync.native(pythonExecPath)
+    //         }
+    //         return pythonExecPath
+    //     } catch (e) {
+    //         throw e
+    //     }
+    // }
     return pythonExecPath
 }
 

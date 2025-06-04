@@ -50,7 +50,7 @@ function createWindow(config) {
     // alwaysOnTop: true,
     // frame: true,
   });
-  mainWindow.loadURL(`http://${config.server.host}:${config.server.port}/`);
+  mainWindow.loadURL(`http://localhost:${config.server.port}/`);
   mainWindow.webContents.on('crashed', () => {
     logger.error('窗口崩溃');
   });
@@ -70,7 +70,10 @@ function createWindow(config) {
 }
 
 function createBackgroundService(config, configPath) {
+  logger.info('current dir:', process.cwd())
   const pythonExecPath = resolvePythonExecPath(config.server.pythonExec)
+  logger.info('current dir:', process.cwd())
+  logger.info('pythonExec:', pythonExecPath)
   const execCommand = [
     config.server.serverPath,
     "--config", configPath
@@ -109,7 +112,7 @@ async function waitForServer(config, retryCount = 0) {
   const maxRetries = 10;
   try {
     logger.info('尝试连接服务器...');
-    const response = await fetch(`http://${config.server.host}:${config.server.port}/health`);
+    const response = await fetch(`http://localhost:${config.server.port}/health`);
     const health = await response.json();
     logger.info('health:', health)
     logger.info('health.status === OK:', health.status === 'OK')

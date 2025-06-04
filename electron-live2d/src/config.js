@@ -4,7 +4,7 @@ const logger = require('./utils/logger')
 
 class Config {
   constructor() {
-    this.configPath = path.join(__dirname, 'config.json')
+    this.configPath = path.join(__dirname, '../dist/config.json')
     this.config = this.loadConfig()
   }
 

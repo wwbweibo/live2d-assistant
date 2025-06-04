@@ -6,13 +6,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
-    "package": "electron-forge package",
+    "package": "node scripts/before-package.js && electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint src --color"
   },
   "keywords": [],
-  "author": "weibo",
+  "author": "wwbweibo",
   "license": "MIT",
   "config": {
     "forge": {
@@ -46,9 +46,6 @@
       },
       "packagerConfig": {
         "asar": false,
-        "extraResource": [
-          "www"
-        ],
         "ignore": [
           "^\\/[.].+",
           "node_modules/.cache"
