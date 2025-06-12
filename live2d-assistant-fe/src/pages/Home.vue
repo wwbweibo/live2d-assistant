@@ -46,13 +46,15 @@
         </div>
         <!-- 分割线 -->
         <div class="assistant-setting-divider"></div>
-        <div class="assistant-setting" @click="showSettings = true">
-          <div class="assistant-setting-item">
+        <div class="assistant-setting">
+          <div class="assistant-setting-item" @click="showSettings = true">
             <div class="assistant-setting-item-icon">
-              <i class="fas fa-cog"></i>
+              <SettingOutlined />
             </div>
-            <div class="assistant-setting-item-text" v-if="!sidebarCollapsed">
-              设置
+          </div>
+          <div class="assistant-setting-item" @click="showKnowledgeBase = true">
+            <div class="assistant-setting-item-icon">
+              <BookOutlined />
             </div>
           </div>
         </div>
@@ -64,12 +66,15 @@
     <a-modal :open="showSettings" @cancel="showSettings = false" title="设置" @ok="saveSettings" :width="800">
       <SettingModal :settings="systemSettings" :updateSettings="handleSystemSettingsUpdate" />
     </a-modal>
+    <a-modal :open="showKnowledgeBase" @cancel="showKnowledgeBase = false" title="知识库" :width="800">
+      <KnowledgeBaseModal />
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, reactive } from 'vue'
-import { FormOutlined } from '@ant-design/icons-vue'
+import { FormOutlined, BookOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import * as PIXI from 'pixi.js'
 import { Live2DModel as Live2DModelCubism4, MotionPreloadStrategy } from 'pixi-live2d-display/cubism4'
 import { Live2DModel as Live2DModelCubism2 } from 'pixi-live2d-display/cubism2'
@@ -78,6 +83,7 @@ import type { ConversationsProps } from 'ant-design-x-vue'
 import { h } from 'vue'
 import { Modal as AModal, Button as AButton, message, Space } from 'ant-design-vue'
 import SettingModal from '../components/setting_modal.vue'
+import KnowledgeBaseModal from '../components/knowledge_base_modal.vue'
 import ChatPage from '../components/chat.vue'
 import { SystemSettings, Conversation } from '../types/message'
 import { updateConfig } from '../utils/requests'
@@ -92,6 +98,8 @@ const live2dCanvas = ref<HTMLCanvasElement | null>(null)
 let app: PIXI.Application | null = null
 let model: any = null
 const showSettings = ref(false)
+const showKnowledgeBase = ref(false)
+
 
 // 响应式侧边栏状态
 const sidebarVisible = ref(true)
@@ -523,6 +531,8 @@ onUnmounted(() => {
 }
 
 .assistant-setting {
+  display: flex;
+  flex-direction: row;
   width: 100%;
   cursor: pointer;
 }
@@ -532,7 +542,7 @@ onUnmounted(() => {
   height: 100%;
   background: rgba(255, 255, 255, 0);
   border-radius: 0 0 0 20px;
-  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  box-shadow: -5px 0 15px rgba(137, 122, 122, 0.1);
   backdrop-filter: blur(3px);
 }
 

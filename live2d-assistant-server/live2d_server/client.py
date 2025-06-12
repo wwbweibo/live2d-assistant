@@ -4,12 +4,12 @@ from mcp import ClientSession, StdioServerParameters, ListToolsResult
 from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
 from mcp.types import CallToolResult
-from chat_response import ChatResponse
-from openai_adapter import OpenAIAdapter
+from live2d_server.chat_response import ChatResponse
+from live2d_server.openai_adapter import OpenAIAdapter
 import logging
 import json
 from pydantic import BaseModel, Field
-from model import Tool, ToolFunction
+from live2d_server.model import Tool, ToolFunction
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +77,20 @@ class SSEClient(Client):
     async def connect(self):
         if not self.config.url:
             raise ValueError("url is required")
-        url = self.config.url
-        sse_transport = await self.exit_stack.enter_async_context(sse_client(url))
-        self.stdio, self.write = sse_transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
-        await self.session.initialize()
-        # List available tools
-        response = await self.session.list_tools()
-        tools = response.tools
-        logger.info(f"Connected to server with tools: {[tool.name for tool in tools]}")
+        try: 
+            url = self.config.url
+            sse_transport = await self.exit_stack.enter_async_context(sse_client(url))
+            self.stdio, self.write = sse_transport
+            self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+            await self.session.initialize()
+            # List available tools
+            response = await self.session.list_tools()
+            tools = response.tools
+            logger.info(f"Connected to server with tools: {[tool.name for tool in tools]}")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            logger.error(f"Failed to connect to server {self.config.name}: {e}")
 
 class STDIOClient(Client):
     def __init__(self, config: MCPServerConfig):

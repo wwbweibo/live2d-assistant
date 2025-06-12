@@ -90,6 +90,7 @@ const isEditing = ref(false)
 const chatHeaderTitleInputRef = ref<HTMLInputElement>()
 const messagesRef = ref<HTMLDivElement>();
 const isAgent = ref(false)
+const webSearch = ref(false)
 
 const roles: BubbleListProps['roles'] = {
   assistant: {
@@ -151,6 +152,14 @@ const renderFooter = (components) => {
       unCheckedChildren: 'Chat',
       onChange: (checked) => {
         isAgent.value = !isAgent.value
+      }
+    }),
+    h(Switch, {
+      checked: webSearch.value,
+      checkedChildren: 'Web Search',
+      unCheckedChildren: 'Web Search',
+      onChange: (checked) => {
+        webSearch.value = !webSearch.value
       }
     })
   ])
@@ -298,6 +307,7 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
       agents: JSON.parse(props.systemSettings!.assistantSettings.agents || '[]'),
       chat_id: localConversation.value.key,
       is_resume: localConversation.value.messages[localConversation.value.messages.length - 1].role === 'waiting_for_input',
+      web_search: webSearch.value
     },
     onMessage: (event) => {
       // this.isLoading = false

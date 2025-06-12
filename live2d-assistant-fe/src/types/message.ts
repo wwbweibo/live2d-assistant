@@ -83,4 +83,16 @@ interface Conversation {
     group: string | undefined;
 }
 
-export type { Message, LLMSettings, ChatHistory, SystemSettings, Live2DSettings, MCPServer, MCPServerStatus, MCPServerTool, Conversation, AgentConfig, ToolResouce };
+interface KnowledgeFile {
+    id: string;
+    name: string;
+    type: string;
+    size: number;
+    uploadTime: number;
+    status: 'processing' | 'completed' | 'failed';
+    content?: string;
+    url?: string;
+    error?: string;
+}
+
+export type { Message, LLMSettings, ChatHistory, SystemSettings, Live2DSettings, MCPServer, MCPServerStatus, MCPServerTool, Conversation, AgentConfig, ToolResouce, KnowledgeFile };

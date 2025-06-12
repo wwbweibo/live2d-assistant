@@ -1,10 +1,10 @@
 from openai import AsyncOpenAI
 from typing import Any, AsyncGenerator, Literal, overload
-from chat_response import ChatResponse, ToolCall
+from live2d_server.chat_response import ChatResponse, ToolCall
 import json
 # from typing_extensions import overload
 import logging
-from model import Tool
+from live2d_server.model import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class OpenAIAdapter():
                         tool_calls=list(tool_calls.values())
                     )
 
-    async def generate(self, model: str, prompt: str, format: dict = None) -> Any:
+    async def generate(self, model: str, prompt: str, format: dict = None) -> str:
         response = await self.openai_client.chat.completions.create(model=model, messages=[{"role": "user", "content": prompt}], response_format=format)
         logger.info(f"OpenAI response: {response}")
         return response.choices[0].message.content
@@ -83,6 +83,8 @@ class OpenAIAdapter():
         return {'role': response.role, 'content': response.content, 'function_call': None, 'tool_calls': [{'id': tool_call.id, 'function': {'arguments': json.dumps(tool_call.arguments), 'name': tool_call.name}, 'type': 'function'}]}
     
     def tool_to_openai_tool(self, tools: list[Tool]) -> list[dict]:
+        if tools is None or len(tools) == 0:
+            return None
         return [
             {
                 "type": "function",

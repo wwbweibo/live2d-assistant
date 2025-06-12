@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 from pydantic import BaseModel
-from client import LLMConfig, MCPServerConfig
+from live2d_server.client import LLMConfig, MCPServerConfig
 
 class TTSConfig(BaseModel):
     enabled: bool = False

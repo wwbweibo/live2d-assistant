@@ -1,20 +1,24 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Form
 from fastapi.responses import StreamingResponse
 import os
 import requests
 import base64
 import json
 import asyncio
-from search import BingSearchEngine
 from typing import List, Optional, AsyncGenerator
 from pydantic import BaseModel
-from configuration import Config
-from client import get_mcp_client, MCPClientConfig, init_mcp_client
+from live2d_server.configuration import Config
+from live2d_server.client import get_mcp_client, MCPClientConfig, init_mcp_client
 import logging
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from langgraph.types import Command
-from agent import Agent, AgentConfig
+from langchain_core.messages import ToolMessage
+from live2d_server.agent.agent import Agent
+from live2d_server.agent.model import AgentConfig
+from live2d_server.rag import process_uploaded_file
+from live2d_server.search.searx import search
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -81,14 +85,18 @@ async def stream_chat_response(
 ) -> AsyncGenerator[str, None]:
     """生成流式聊天响应"""
     try:
-        # 处理网络搜索
         if request.web_search:
-            search_engine = BingSearchEngine(llm_adapter, request.model)
-            search_text = request.messages[-1]['content']
-            search_result = search_engine.searh_workflow(search_text)
-            request.messages[-1]['content'] = '使用以下搜索结果作为上下文，回答用户的问题：' + '\n'.join(search_result) + '\n' + request.messages[-1]['content']
-        
-        # 流式处理查询
+            # 由大模型构建搜索词之后进行搜索
+            search_query = await get_mcp_client().get_llm_adapter().generate(model=request.model, prompt=f"""
+            你是一个搜索专家，请根据用户的历史对话内容和当前的问题构建搜索词并返回，你应该仅返回搜索词，不要返回任何其他内容。
+            用户的问题是：{request.messages[-1]['content']}
+            用户的对话历史是：{request.messages[1:]}
+            当前时间是：{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            """)
+            logger.info(f"search query: {search_query}")
+            search_result = search(search_query)
+            # 替换掉最后一个消息的content
+            request.messages[-1]['content'] = f"使用如下的信息回答用户的问题：{search_result}，用户的问题是：{request.messages[-1]['content']}"
         async for chunk in get_mcp_client().stream_process_query(request.model, request.messages[-1]['content'], request.messages[:-1]):
             logger.info(f"stream_chat_response: {chunk}")
             yield f"data: {json.dumps(chunk)}\n\n"
@@ -176,6 +184,8 @@ async def agentic_chat(
             logger.info('-'*100)
             agent, message_chunk = s
             message_chunk, _ = message_chunk
+            if isinstance(message_chunk, ToolMessage):
+                continue
             if hasattr(message_chunk, 'tool_call_chunks') and len(message_chunk.tool_call_chunks) > 0:
                 tool_call_chunk = message_chunk.tool_call_chunks[0]
                 logger.info(f"agentic_chat: {message_chunk.tool_call_chunks}")
@@ -255,6 +265,21 @@ async def get_mcp_servers(name: str, config: Config = Depends(get_config)):
     获取MCP服务器状态
     '''
     return await get_mcp_client().get_server_details(name)
+
+@router.post('/api/rag/upload')
+async def upload_rag(request: Request):
+    '''
+    上传RAG
+    '''
+    form_data = await request.form()
+    file_name = form_data.get('file_name')
+    file_data = form_data.get('file_data')
+    # 先写入本地文件
+    with open( "cache/" + file_name, 'wb') as f:
+        f.write(file_data)
+    # 写入 RAG
+    await process_uploaded_file("cache/" + file_name, file_name)
+    return {'status': 'OK'}
 
 @router.get('/health')
 async def health(config: Config = Depends(get_config)):
