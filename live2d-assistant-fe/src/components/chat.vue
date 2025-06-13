@@ -15,7 +15,7 @@
     </div>
     
     <!-- 空状态或欢迎界面 -->
-    <div v-if="localConversation.messages.length === 0" class="welcome-container">
+    <!-- <div v-if="localConversation.messages.length === 0" class="welcome-container">
       <div class="welcome-content">
         <div class="welcome-icon">
           <AndroidOutlined />
@@ -37,10 +37,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- 消息列表 -->
-    <div v-else class="messages" ref="messagesRef">
+    <div class="messages" ref="messagesRef">
       <Flex gap="middle" vertical>
         <BubbleList :roles="roles" :items="message2BubbleListItem()" />
         
@@ -75,7 +75,7 @@ import { Flex, Input, Typography, Button, Switch } from 'ant-design-vue';
 import { Sender, Bubble, BubbleList, Prompts } from 'ant-design-x-vue';
 import type { BubbleProps, BubbleListProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
-import { UserOutlined, EditOutlined, AndroidOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue';
+import { UserOutlined, EditOutlined, AndroidOutlined, SearchOutlined, QuestionCircleOutlined, BookOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
 import { h, ref, watch, nextTick, toRef } from 'vue';
 import { PropType } from 'vue';
@@ -91,6 +91,7 @@ const chatHeaderTitleInputRef = ref<HTMLInputElement>()
 const messagesRef = ref<HTMLDivElement>();
 const isAgent = ref(false)
 const webSearch = ref(false)
+const useRAG = ref(false)
 
 const roles: BubbleListProps['roles'] = {
   assistant: {
@@ -146,20 +147,43 @@ const message2BubbleListItem = () => {
 const renderFooter = (components) => {
   const { SendButton, LoadingButton, SpeechButton } = components;
   return h(Flex, { align: 'start', gap: 'middle' }, [
-    h(Switch, {
-      checked: isAgent.value,
-      checkedChildren: 'Agent',
-      unCheckedChildren: 'Chat',
-      onChange: (checked) => {
+    h(AndroidOutlined, {
+      onClick: () => {
         isAgent.value = !isAgent.value
+        if (isAgent.value) {
+          useRAG.value = false
+          webSearch.value = false
+        }
+      },
+      style: {
+        color: isAgent.value ? '#1890ff' : '#999',
+        fontSize: '20px'
       }
     }),
-    h(Switch, {
-      checked: webSearch.value,
-      checkedChildren: 'Web Search',
-      unCheckedChildren: 'Web Search',
-      onChange: (checked) => {
+    h(SearchOutlined, {
+      onClick: () => {
         webSearch.value = !webSearch.value
+        if (webSearch.value) {
+          useRAG.value = false
+          isAgent.value = false
+        }
+      },
+      style: {
+        color: webSearch.value ? '#1890ff' : '#999',
+        fontSize: '20px'
+      }
+    }),
+    h(BookOutlined, {
+      onClick: () => {
+        useRAG.value = !useRAG.value
+        if (useRAG.value) {
+          isAgent.value = false
+          webSearch.value = false
+        }
+      },
+      style: {
+        color: useRAG.value ? '#1890ff' : '#999',
+        fontSize: '20px'
       }
     })
   ])
@@ -307,7 +331,8 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
       agents: JSON.parse(props.systemSettings!.assistantSettings.agents || '[]'),
       chat_id: localConversation.value.key,
       is_resume: localConversation.value.messages[localConversation.value.messages.length - 1].role === 'waiting_for_input',
-      web_search: webSearch.value
+      web_search: webSearch.value,
+      rag: useRAG.value
     },
     onMessage: (event) => {
       // this.isLoading = false
@@ -443,7 +468,7 @@ const handleSaveConversationLabel = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(245, 245, 245, 0.95));
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(245, 245, 245, 0));
 }
 
 .messages {
@@ -500,7 +525,7 @@ const handleSaveConversationLabel = () => {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
+  /* backdrop-filter: blur(10px); */
   display: flex;
   align-items: center;
   justify-content: center;

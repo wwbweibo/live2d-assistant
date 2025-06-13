@@ -34,6 +34,7 @@ dependencies = [
     "Pillow",
     "transformers",
     "docx2txt",
+    "rapidocr-onnxruntime>=1.4.4",
 ]
 
 [dependency-groups]

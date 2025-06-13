@@ -22,3 +22,8 @@ venv/
 .vscode/
 asset/
 mcp_servers/
+
+
+**/cache/
+*.db
+*.db.lock

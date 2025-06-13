@@ -18,8 +18,8 @@ from pymilvus import DataType, MilvusClient
 
 # Other imports
 from PIL import Image
-import pytesseract
 import fitz  # PyMuPDF
+from rapidocr_onnxruntime import RapidOCR
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class MilvusRAGSystem:
     """基于Milvus和LangChain的RAG系统"""
-    
     def __init__(
         self,
         collection_name: str = "knowledge_base",
@@ -211,56 +210,38 @@ class MilvusRAGSystem:
     
     async def _load_txt(self, file_path: str) -> List[Document]:
         """加载文本文件"""
-        loop = asyncio.get_event_loop()
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         
-        def _load():
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            return [Document(
-                page_content=content,
-                metadata={"source": file_path}
-            )]
-        
-        return await loop.run_in_executor(self.executor, _load)
+        return [Document(
+            page_content=content,
+            metadata={"source": file_path}
+        )]
+
     
     async def _load_image(self, file_path: str) -> List[Document]:
         """加载图片文件并进行OCR"""
-        loop = asyncio.get_event_loop()
+        ocr = RapidOCR()  # RapidOCR 实例可复用
+        image = Image.open(file_path)
+        result, _ = ocr(image)
+        text = "\n".join([line[1] for line in result]) if result else ""
         
-        def _load():
-            try:
-                # 使用Tesseract OCR提取图片中的文字
-                image = Image.open(file_path)
-                text = pytesseract.image_to_string(image, lang='chi_sim+eng')
-                
-                if text.strip():
-                    return [Document(
-                        page_content=text,
-                        metadata={
-                            "source": file_path,
-                            "type": "image_ocr"
-                        }
-                    )]
-                else:
-                    return [Document(
-                        page_content="[图片文件，未检测到文字内容]",
-                        metadata={
-                            "source": file_path,
-                            "type": "image"
-                        }
-                    )]
-            except Exception as e:
-                logger.warning(f"OCR failed for {file_path}: {e}")
-                return [Document(
-                    page_content="[图片文件]",
-                    metadata={
-                        "source": file_path,
-                        "type": "image"
-                    }
-                )]
-        
-        return await loop.run_in_executor(self.executor, _load)
+        if text.strip():
+            return [Document(
+                page_content=text,
+                metadata={
+                    "source": file_path,
+                    "type": "image_ocr"
+                }
+            )]
+        else:
+            return [Document(
+                page_content="[图片文件，未检测到文字内容]",
+                metadata={
+                    "source": file_path,
+                    "type": "image"
+                }
+            )]
     
     async def _store_chunks(self, chunks: List[Document], file_id: str, source: str):
         """将文档块存储到Milvus"""
@@ -342,12 +323,14 @@ class MilvusRAGSystem:
         """删除文件的所有文档块"""
         try:
             # 根据file_id删除相关文档
-            filter_expr = f'file_id == "{file_id}"'
+            filter_expr = f'id == "{file_id}"'
             self.client.delete(
                 collection_name=self.collection_name,
                 filter=filter_expr
             )
-            
+
+            # 删除文件
+            os.remove(file_id)
             logger.info(f"Deleted chunks for file {file_id}")
             return True
             
@@ -426,6 +409,18 @@ class MilvusRAGSystem:
                 "query": query
             }
     
+    async def list_knowledge_base(self) -> List[Dict[str, Any]]:
+        """列出知识库"""
+        # 列出所有chunk，并返回文件名
+        chunks = self.client.query(
+            collection_name=self.collection_name,
+            filter="",
+            output_fields=["id", "metadata", "text"],
+            limit=10000
+        )
+        logging.info(f"list_knowledge_base: {chunks}")
+        return chunks
+
     def close(self):
         """关闭连接和资源"""
         try:
@@ -452,6 +447,11 @@ async def process_uploaded_file(file_path: str, file_id: str) -> Dict[str, Any]:
     rag_system = get_rag_system()
     return await rag_system.process_file(file_path, file_id)
 
+async def list_knowledge_base() -> List[Dict[str, Any]]:
+    """列出知识库"""
+    rag_system = get_rag_system()
+    return await rag_system.list_knowledge_base()
+
 async def search_knowledge_base(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     """搜索知识库"""
     rag_system = get_rag_system()
@@ -471,3 +471,8 @@ async def get_knowledge_file_info(file_id: str) -> Optional[Dict[str, Any]]:
     """获取知识库文件信息"""
     rag_system = get_rag_system()
     return await rag_system.get_file_info(file_id)
+
+async def delete_knowledge_base(file_id: str) -> bool:
+    """删除知识库文件"""
+    rag_system = get_rag_system()
+    return await rag_system.delete_file_chunks(file_id)

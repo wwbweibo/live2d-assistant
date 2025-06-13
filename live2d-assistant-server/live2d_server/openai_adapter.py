@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from typing import Any, AsyncGenerator, Literal, overload
+from typing import AsyncGenerator, Literal, overload
 from live2d_server.chat_response import ChatResponse, ToolCall
 import json
 # from typing_extensions import overload

@@ -67,7 +67,7 @@
       <SettingModal :settings="systemSettings" :updateSettings="handleSystemSettingsUpdate" />
     </a-modal>
     <a-modal :open="showKnowledgeBase" @cancel="showKnowledgeBase = false" title="知识库" :width="800">
-      <KnowledgeBaseModal />
+      <KnowledgeBaseModal :config="systemSettings" />
     </a-modal>
   </div>
 </template>
@@ -444,7 +444,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0);
   z-index: 1000;
   display: flex;
   flex-direction: row;
@@ -584,7 +584,7 @@ onUnmounted(() => {
   z-index: 1100;
   width: 44px;
   height: 44px;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -594,7 +594,7 @@ onUnmounted(() => {
 }
 
 .mobile-menu-toggle:hover {
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0);
 }
 
 .hamburger {
@@ -653,7 +653,7 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0);
   z-index: 999;
 }
 

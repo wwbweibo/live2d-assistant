@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import argparse
 import logging
 from live2d_server.router import router
+from live2d_server.rag.router import router as rag_router
 from contextlib import asynccontextmanager
 import uvicorn
 
@@ -16,6 +17,7 @@ static_path = None
 async def lifespan(app: FastAPI):
 
     app.include_router(router)
+    app.include_router(rag_router)
     if static_path:
         app.mount("/", StaticFiles(directory=static_path, html=True), name="static")
     yield

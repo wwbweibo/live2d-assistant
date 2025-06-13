@@ -50,30 +50,7 @@
           @click="selectFile(file)"
         >
           <div class="file-info">
-            <div class="file-icon">
-              <FileTextOutlined v-if="file.type.includes('text') || file.type.includes('pdf')" />
-              <FileWordOutlined v-else-if="file.type.includes('word') || file.type.includes('doc')" />
-              <FileImageOutlined v-else-if="file.type.includes('image')" />
-              <FileOutlined v-else />
-            </div>
-            <div class="file-details">
-              <div class="file-name">{{ file.name }}</div>
-              <div class="file-meta">
-                <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                <span class="file-date">{{ formatDate(file.uploadTime) }}</span>
-              </div>
-              <div class="file-status" :class="file.status">
-                <span v-if="file.status === 'processing'" class="status-processing">
-                  <LoadingOutlined /> 处理中...
-                </span>
-                <span v-else-if="file.status === 'completed'" class="status-completed">
-                  <CheckCircleOutlined /> 已完成
-                </span>
-                <span v-else-if="file.status === 'failed'" class="status-failed">
-                  <ExclamationCircleOutlined /> 处理失败
-                </span>
-              </div>
-            </div>
+              {{ file.id }}
           </div>
           <div class="file-actions">
             <Button 
@@ -95,39 +72,17 @@
     <div class="file-content-section" v-if="selectedFile">
       <h3 class="section-title">
         文件内容
-        <span class="file-title">{{ selectedFile.name }}</span>
+        <span class="file-title">{{ selectedFile.id }}</span>
       </h3>
       
       <div class="content-area">
-        <div v-if="selectedFile.status === 'processing'" class="content-loading">
-          <Spin size="large" />
-          <p>正在处理文件内容...</p>
+        
+        <div class="content-display">
+          <pre>
+            {{ selectedFile.text }}
+          </pre>
         </div>
         
-        <div v-else-if="selectedFile.status === 'failed'" class="content-error">
-          <ExclamationCircleOutlined />
-          <p>文件处理失败</p>
-          <p class="error-detail">{{ selectedFile.error || '未知错误' }}</p>
-        </div>
-        
-        <div v-else-if="selectedFile.content" class="content-display">
-          <!-- 图片内容 -->
-          <div v-if="selectedFile.type.includes('image')" class="image-content">
-            <img :src="selectedFile.url" :alt="selectedFile.name" />
-          </div>
-          
-          <!-- 文本内容 -->
-          <div v-else class="text-content">
-            <div class="content-toolbar">
-              <Button size="small" @click="copyContent">
-                <CopyOutlined /> 复制内容
-              </Button>
-            </div>
-            <pre class="content-text">{{ selectedFile.content }}</pre>
-          </div>
-        </div>
-        
-        <Empty v-else description="无内容" />
       </div>
     </div>
   </div>
@@ -150,7 +105,11 @@ import {
   DeleteOutlined,
   CopyOutlined
 } from '@ant-design/icons-vue'
-import type { KnowledgeFile } from '../types/message'
+import type { KnowledgeFile, SystemSettings } from '../types/message'
+
+const props = defineProps<{
+  config: SystemSettings
+}>()
 
 // 响应式数据
 const fileList = ref([])
@@ -205,41 +164,29 @@ const handleUpload = async (options: any) => {
     
     // 创建FormData
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file_name', file.name)
+    formData.append('file_data', file)
+
     
     // 发送上传请求
-    const response = await fetch('/api/knowledge/upload', {
+    const response = await fetch( `${props.config.serverUrl}/api/rag/upload`, {
       method: 'POST',
       body: formData
-    })
-    
-    clearInterval(progressInterval)
-    
-    if (response.ok) {
-      const result = await response.json()
-      uploadProgress.value = 100
-      uploadStatus.value = 'success'
-      
-      // 添加到文件列表
-      const newFile: KnowledgeFile = {
-        id: result.fileId || Date.now().toString(),
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        uploadTime: Date.now(),
-        status: 'processing'
+    }).then(res => {
+      if (res.status === 200) {
+        message.success('文件上传成功') 
+        uploadProgress.value = 100
+        uploadStatus.value = 'success'
+        return res.json()
+      } else {
+        message.error('文件上传失败')
+        return null
       }
-      
-      knowledgeFiles.value.unshift(newFile)
-      message.success('文件上传成功，正在处理中...')
-      
-      // 开始轮询处理状态
-      pollProcessingStatus(newFile.id)
-      
-    } else {
-      throw new Error('上传失败')
-    }
-    
+    }).finally(() => {
+      clearInterval(progressInterval)
+      isUploading.value = false
+    })
+
   } catch (error) {
     uploadStatus.value = 'exception'
     message.error('文件上传失败')
@@ -251,46 +198,6 @@ const handleUpload = async (options: any) => {
     }, 1000)
   }
 }
-
-// 轮询处理状态
-const pollProcessingStatus = async (fileId: string) => {
-  isProcessing.value = true
-  
-  const checkStatus = async () => {
-    try {
-      const response = await fetch(`/api/knowledge/status/${fileId}`)
-      if (response.ok) {
-        const result = await response.json()
-        const fileIndex = knowledgeFiles.value.findIndex(f => f.id === fileId)
-        
-        if (fileIndex !== -1) {
-          knowledgeFiles.value[fileIndex].status = result.status
-          
-          if (result.status === 'completed') {
-            knowledgeFiles.value[fileIndex].content = result.content
-            knowledgeFiles.value[fileIndex].url = result.url
-            message.success('文件处理完成')
-            isProcessing.value = false
-            return
-          } else if (result.status === 'failed') {
-            knowledgeFiles.value[fileIndex].error = result.error
-            message.error('文件处理失败')
-            isProcessing.value = false
-            return
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Status check error:', error)
-    }
-    
-    // 继续轮询
-    setTimeout(checkStatus, 2000)
-  }
-  
-  checkStatus()
-}
-
 // 选择文件
 const selectFile = (file: KnowledgeFile) => {
   selectedFile.value = file
@@ -301,7 +208,7 @@ const deleteFile = async (fileId: string) => {
   try {
     deletingFiles.value.push(fileId)
     
-    const response = await fetch(`/api/knowledge/delete/${fileId}`, {
+    const response = await fetch(`${props.config.serverUrl}/api/rag/delete/${fileId}`, {
       method: 'DELETE'
     })
     
@@ -322,39 +229,18 @@ const deleteFile = async (fileId: string) => {
   }
 }
 
-// 复制内容
-const copyContent = async () => {
-  if (selectedFile.value?.content) {
-    try {
-      await navigator.clipboard.writeText(selectedFile.value.content)
-      message.success('内容已复制到剪贴板')
-    } catch (error) {
-      message.error('复制失败')
-    }
-  }
-}
-
-// 格式化文件大小
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-// 格式化日期
-const formatDate = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleString('zh-CN')
-}
-
 // 加载已有文件列表
 const loadFileList = async () => {
   try {
-    const response = await fetch('/api/knowledge/files')
+    const response = await fetch(`${props.config.serverUrl}/api/rag/list`)
     if (response.ok) {
       const files = await response.json()
-      knowledgeFiles.value = files
+      knowledgeFiles.value = files.map((file: any) => ({
+        id: file.id,
+        metadata: file.metadata,
+        text: file.text
+      }))
+      console.log(knowledgeFiles.value)
     }
   } catch (error) {
     console.error('Load files error:', error)
@@ -641,5 +527,15 @@ onMounted(() => {
 .file-list-section::-webkit-scrollbar-thumb:hover,
 .content-text::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-progress {
+  display: flex;
 }
 </style> 
