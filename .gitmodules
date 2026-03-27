@@ -1,0 +1,3 @@
+[submodule "live2d-assistant-server/external/agentic-agent"]
+	path = live2d-assistant-server/external/agentic-agent
+	url = https://github.com/wwbweibo/agentic-agent.git

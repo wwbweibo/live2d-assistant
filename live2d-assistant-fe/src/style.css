@@ -1,13 +1,536 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  body {
-    font-family: Arial, sans-serif;
-  }
+/**
+ * Live2D Assistant — 全局样式 & 设计系统
+ * Aurora Glass：毛玻璃极光风 Live2D 全屏背景 + frosted glass UI
+ */
 
-  .ant-bubble-content-filled {
-    background-color: #fff !important; 
+/* ─── CSS 设计令牌 ─────────────────────────────────── */
+:root {
+  /* 毛玻璃 */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg-solid: rgba(255, 255, 255, 0.88);
+  --glass-bg-dark: rgb(18, 18, 30);
+  --glass-bg-dark-hover: rgb(28, 28, 44);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-border-dark: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --glass-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.10);
+  --glass-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.18);
+  --blur-amount: 24px;
+  --blur-amount-heavy: 32px;
+
+  /* 主色 — 极光蓝紫渐变 */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-rgb: 99, 102, 241;
+  --color-primary-light: rgba(99, 102, 241, 0.10);
+  --color-primary-border: rgba(99, 102, 241, 0.30);
+  --color-accent: #a78bfa;
+  --color-accent-rgb: 167, 139, 250;
+  --color-accent-pink: #f472b6;
+  --color-accent-pink-rgb: 244, 114, 182;
+  --color-success: #34d399;
+  --color-success-rgb: 52, 211, 153;
+  --color-danger: #f87171;
+  --color-danger-rgb: 248, 113, 113;
+  --color-warning: #fbbf24;
+  --color-warning-rgb: 251, 191, 36;
+
+  /* 渐变 */
+  --gradient-primary: linear-gradient(135deg, #6366f1, #a78bfa);
+  --gradient-aurora: linear-gradient(135deg, #6366f1 0%, #a78bfa 40%, #f472b6 100%);
+  --gradient-warm: linear-gradient(135deg, #f472b6, #fbbf24);
+  --gradient-cool: linear-gradient(135deg, #06b6d4, #6366f1);
+  --gradient-glass-dark: linear-gradient(180deg, rgba(20, 20, 35, 0.90) 0%, rgba(10, 10, 20, 0.85) 100%);
+  --gradient-sidebar-accent: linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+
+  /* 文字 */
+  --text-primary: #1e1b4b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-on-dark: #fff;
+  --text-on-dark-muted: rgba(255, 255, 255, 0.65);
+
+  /* 间距 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* 圆角 */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* 字体 */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+
+  /* 动画 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* ─── 全局重置 & 基础 ───────────────────────────────── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* ─── 滚动条美化 ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* 深色滚动条（侧边栏） */
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── 毛玻璃工具类 ───────────────────────────────────── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-card-solid {
+  background: var(--glass-bg-solid);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow-md);
+}
+
+.glass-dark {
+  background: var(--glass-bg-dark);
+  backdrop-filter: blur(var(--blur-amount-heavy)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur-amount-heavy)) saturate(160%);
+  border: 1px solid var(--glass-border-dark);
+}
+
+/* ─── 渐变装饰工具类 ──────────────────────────────── */
+.gradient-text {
+  background: var(--gradient-aurora);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-aurora);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glow-primary {
+  box-shadow: 0 0 20px rgba(var(--color-primary-rgb), 0.25),
+              0 0 60px rgba(var(--color-primary-rgb), 0.10);
+}
+
+/* ─── Ant Design X Conversations 覆盖（深色侧边栏）── */
+.ant-conversations {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* 所有文字强制浅色 */
+.ant-conversations,
+.ant-conversations *,
+.ant-conversations *::before,
+.ant-conversations *::after {
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
+/* 会话项 */
+.ant-conversations .ant-conversations-item {
+  border-radius: var(--radius-md) !important;
+  margin: 2px var(--space-xs) !important;
+  padding: var(--space-sm) var(--space-md) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  position: relative;
+}
+
+.ant-conversations .ant-conversations-item:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.ant-conversations .ant-conversations-item.ant-conversations-item-active,
+.ant-conversations .ant-conversations-item-active {
+  background: rgba(var(--color-primary-rgb), 0.22) !important;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.35) !important;
+  box-shadow: 0 0 20px rgba(var(--color-primary-rgb), 0.12) !important;
+}
+
+.ant-conversations .ant-conversations-item-active,
+.ant-conversations .ant-conversations-item-active *  {
+  color: #fff !important;
+}
+
+/* 会话名文字 */
+.ant-conversations .ant-conversations-label {
+  color: #fff !important;
+  font-size: 13px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 列表内(子级)标签稍暗一点 */
+.ant-conversations .ant-conversations-list .ant-conversations-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* 分组标题 — 高亮显示 */
+.ant-conversations .ant-conversations-group-title,
+.ant-conversations .ant-conversations-group-title *,
+.ant-conversations .ant-conversations-group-title span {
+  color: rgba(255, 255, 255, 0.70) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+/* anticon 图标也要白色 */
+.ant-conversations .anticon,
+.ant-conversations .ant-conversations-menu-icon {
+  color: rgba(255, 255, 255, 0.60) !important;
+}
+.ant-conversations .ant-conversations-item:hover .anticon,
+.ant-conversations .ant-conversations-menu-icon:hover {
+  color: #fff !important;
+}
+
+/* ─── Ant Design X Bubble 覆盖 ─────────────────────── */
+.ant-bubble-content-filled {
+  background-color: transparent !important;
+}
+
+.ant-bubble-bubble {
+  border-radius: var(--radius-xl) !important;
+  font-family: var(--font-sans) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 用户气泡 — 右侧深色 */
+.ant-bubble-end .ant-bubble-bubble {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25) !important;
+}
+
+.ant-bubble-end .ant-bubble-bubble .ant-typography {
+  color: #fff !important;
+}
+
+/* ─── Ant Design Vue Modal 覆盖 ───────────────────── */
+.ant-modal-mask {
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  background: rgba(15, 15, 25, 0.35) !important;
+}
+
+.ant-modal-content {
+  border-radius: var(--radius-2xl) !important;
+  box-shadow: var(--glass-shadow-lg), 0 0 80px rgba(var(--color-primary-rgb), 0.06) !important;
+  background: var(--glass-bg-solid) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.ant-modal-title {
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ant-modal-body {
+  padding: var(--space-lg) !important;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ─── Ant Design Collapse 覆盖 ─────────────────────── */
+.ant-collapse {
+  background: transparent !important;
+  border: none !important;
+}
+
+.ant-collapse-item {
+  border: none !important;
+  margin-bottom: var(--space-md);
+}
+
+.ant-collapse-header {
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-md) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.08) !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.ant-collapse-header:hover {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.20) !important;
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.06);
+}
+
+.ant-collapse-content {
+  border: none !important;
+  border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-top: -1px;
+}
+
+.ant-collapse-content-box {
+  padding: var(--space-md) !important;
+}
+
+/* ─── Ant Design Switch 覆盖 ────────────────────────── */
+.ant-switch {
+  border-radius: var(--radius-full) !important;
+}
+
+/* ─── Ant Design Slider 覆盖 ────────────────────────── */
+.ant-slider-track {
+  background: var(--gradient-primary) !important;
+}
+.ant-slider-handle::after {
+  box-shadow: 0 0 0 2px var(--color-primary) !important;
+}
+.ant-slider-rail {
+  background: rgba(var(--color-primary-rgb), 0.10) !important;
+}
+
+/* ─── Element Plus 覆盖 ─────────────────────────────── */
+.el-collapse {
+  border: none !important;
+}
+
+.el-collapse-item__header {
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-md) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border) !important;
+  font-weight: 500 !important;
+}
+
+.el-collapse-item__wrap {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+}
+
+/* ─── 通用 input 样式 ──────────────────────────────── */
+input[type="text"],
+input[type="password"],
+input[type="search"],
+textarea,
+.el-textarea__inner {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+textarea:focus,
+.el-textarea__inner:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ─── 通用按钮样式 ─────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.35);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ─── 动画 ─────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb), 0.40);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(var(--color-primary-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb), 0);
+  }
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.4; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-out) both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft var(--duration-slow) var(--ease-out) both;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}

@@ -1,94 +1,130 @@
 <template>
-    <!-- 标签页 -->
-    <div class="tab-container">
-      <div v-for="tab in tabs" :key="tab.id" :class="['tab-item', { active: currentTab === tab.id }]"
-        @click="currentTab = tab.id">
-        <a-tooltip :title="tab.tooltip">
-          <div class="tab-content">
-            {{ tab.name }}
-          </div>
-        </a-tooltip>
-      </div>
+  <!-- 标签页 -->
+  <div class="tab-container">
+    <div
+      v-for="tab in tabs"
+      :key="tab.id"
+      :class="['tab-item', { active: currentTab === tab.id }]"
+      @click="currentTab = tab.id"
+    >
+      <component :is="tab.icon" class="tab-icon" />
+      <span>{{ tab.name }}</span>
     </div>
-    <!-- 设置内容区域 -->
-    <div class="settings-content">
-      <div v-show="currentTab === 'system'" class="tab-content">
-        <SystemSettings :systemSettings="settings" :onChange="handleSystemSettingsChange" />
-      </div>
+  </div>
+  <!-- 设置内容区域 -->
+  <div class="settings-content">
+    <div v-show="currentTab === 'system'" class="tab-pane">
+      <SystemSettings :systemSettings="settings" :onChange="handleSystemSettingsChange" />
     </div>
+    <div v-show="currentTab === 'llm'" class="tab-pane">
+      <LLMSettings :settings="settings" :onChange="handleLLMSettingsChange" />
+    </div>
+    <div v-show="currentTab === 'agents'" class="tab-pane">
+      <AgentOrchestration :settings="settings" @update="onAgentsUpdate" />
+    </div>
+    <div v-show="currentTab === 'skills'" class="tab-pane">
+      <SkillOrchestration />
+    </div>
+    <div v-show="currentTab === 'mcp'" class="tab-pane">
+      <McpServerOrchestration />
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits } from 'vue'
-import { Modal as AModal, Tooltip as ATooltip } from 'ant-design-vue'
-import { SystemSettings as Settings } from '../types/message'
+import { ref } from 'vue'
+import { SettingOutlined, RobotOutlined, CloudOutlined, ThunderboltOutlined, ApiOutlined } from '@ant-design/icons-vue'
+import type { SystemSettings as SystemSettingsType } from '../types/message'
 import SystemSettings from './system_settings.vue'
-import { PropType } from 'vue'
+import AgentOrchestration from './agent_orchestration.vue'
+import SkillOrchestration from './skill_orchestration.vue'
+import McpServerOrchestration from './mcp_server_orchestration.vue'
+import LLMSettings from './llm_settings.vue'
 
-const props = defineProps({
-  settings: { type: Object as PropType<Settings>, required: true },
-  updateSettings: { type: Function, required: true },
-})
-const emit = defineEmits(['update:visible'])
+const props = defineProps<{
+  settings: SystemSettingsType
+  updateSettings: (settings: SystemSettingsType) => void
+  onAgentsUpdate: (agents: any[]) => void
+}>()
 
 const currentTab = ref('system')
+
 const tabs = [
-  { id: 'system', name: '系统设置',  tooltip: '系统相关的基础设置' },
+  { id: 'system',  name: '系统设置',  icon: SettingOutlined },
+  { id: 'llm',     name: 'LLM 设置',  icon: CloudOutlined   },
+  { id: 'agents',  name: 'Agent 编排', icon: RobotOutlined  },
+  { id: 'skills',  name: '技能管理',  icon: ThunderboltOutlined },
+  { id: 'mcp',     name: 'MCP 服务',  icon: ApiOutlined },
 ]
 
-function handleSystemSettingsChange(settings) {
-  props.updateSettings(settings)
+const handleSystemSettingsChange = (s: SystemSettingsType) => {
+  props.updateSettings(s)
 }
-function handleClose() {
-  emit('update:visible', false)
+
+const handleLLMSettingsChange = (s: SystemSettingsType) => {
+  props.updateSettings(s)
 }
 </script>
 
 <style scoped>
 .tab-container {
   display: flex;
-  gap: 2px;
-  background: #f5f7fa;
+  gap: var(--space-xs);
+  background: rgba(99, 102, 241, 0.06);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
   padding: 4px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-lg);
+  border: 1px solid rgba(99, 102, 241, 0.10);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: fit-content;
 }
 
 .tab-item {
-  flex: 1;
-  padding: 10px 16px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-md);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
   cursor: pointer;
-  border-radius: 8px;
-  color: #666;
-  transition: all 0.3s;
+  transition: all var(--duration-fast) var(--ease-out);
   font-weight: 500;
+  font-size: 13px;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.tab-icon {
+  font-size: 14px;
 }
 
 .tab-item:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.8);
-  color: #444;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .tab-item.active {
-  background: white;
-  color: #1890ff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15), 0 0 0 1px rgba(var(--color-primary-rgb), 0.12);
   font-weight: 600;
 }
 
-.tab-content {
-  animation: fadeIn 0.3s ease-in-out;
-  padding: 0 4px;
+.tab-pane {
+  animation: fadeIn 0.2s var(--ease-out);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .settings-content {
-  padding: 0 10px;
+  padding: 0 var(--space-xs);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px);}
-  to { opacity: 1; transform: translateY(0);}
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 </style>

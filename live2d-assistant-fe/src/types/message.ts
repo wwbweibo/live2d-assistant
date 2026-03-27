@@ -1,4 +1,52 @@
-interface Message {
+export interface AgentMeta {
+  name: string
+  duty: string
+  skills: string[]
+  system_prompt: string
+  mcp_servers: string[]
+}
+
+export interface MCPServerConfig {
+  name: string
+  transport: string
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  cwd?: string
+  url?: string
+  auth?: string
+  headers?: Record<string, string>
+}
+
+export interface AgentConfig {
+  metadata: Record<string, unknown>
+  agents: AgentMeta[]
+  mcp_servers: MCPServerConfig[]
+}
+
+export interface SkillMeta {
+  name: string
+  description: string
+  instruction: string
+}
+
+export interface LLMConfig {
+  provider: string
+  api_key: string
+  model: string
+  base_url?: string
+}
+
+export interface Conversation {
+  key: string;
+  label: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+  group: string | undefined;
+}
+
+export interface Message {
   id: number;
   content: string;
   role: string;
@@ -6,87 +54,44 @@ interface Message {
   loading: boolean | undefined;
 }
 
-interface LLMSettings {
-    assistantName: string;
-    sysPrompt: string | undefined;
-    model: string;   
-    baseUrl: string | undefined;
-    apiKey: string | undefined;
-    mcpServers: string | undefined;
-    agents: string | undefined;
+export interface LLMSettings {
+  assistantName: string;
+  sysPrompt: string | undefined;
+  model: string;
+  baseUrl: string | undefined;
+  apiKey: string | undefined;
+  agents: string | undefined;
 }
 
-interface Live2DSettings {
-    modelPath: string;
-    offsetX: number;
-    offsetY: number;
-    scale: number;
-    themeColor: string;
+export interface Live2DSettings {
+  modelPath: string;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+  themeColor: string;
 }
 
-interface ChatHistory {
-    role: string
-    content: string
+export interface ChatHistory {
+  role: string;
+  content: string;
 }
 
-interface SystemSettings {
-    serverUrl: string;
-    backgroundPath: string;
-    assistantSettings: LLMSettings;
-    live2DSettings: Live2DSettings;
+export interface SystemSettings {
+  backgroundPath: string;
+  assistantSettings: LLMSettings;
+  live2DSettings: Live2DSettings;
 }
 
-interface MCPServerTool {
-    name: string;
-    description: string;
-}
-
-interface MCPServer {
-    name: string;
-    transport: string;
-    url: string | undefined;
-    command: string | undefined;
-    args: string | undefined;
-    tools: MCPServerTool[] | undefined;
-    status: string | undefined;
-}
-
-interface ToolResouce {
-    source: string;
-    mcp_server: string | undefined;
-    local_tool_path: string | undefined;
-    tool: any | undefined;
-}
-
-interface AgentConfig {
-    name: string;
-    description: string;
-    tools: ToolResouce[] | undefined;
-    prompt: string | undefined;
-    hands_off: string[] | undefined;
-}
-
-interface MCPServerStatus {
-    status: string;
-    message: string;
-    details: {
-        tools: MCPServerTool[];
-    };
-}
-
-interface Conversation {
-    key: string;
-    label: string;
-    messages: Message[];
-    createdAt: number;
-    updatedAt: number;
-    group: string | undefined;
-}
-
-interface KnowledgeFile {
-    id: string;
-    metadata: any;
-    text: string;
-}
-
-export type { Message, LLMSettings, ChatHistory, SystemSettings, Live2DSettings, MCPServer, MCPServerStatus, MCPServerTool, Conversation, AgentConfig, ToolResouce, KnowledgeFile };
+export type {
+  Message,
+  LLMSettings,
+  ChatHistory,
+  SystemSettings,
+  Live2DSettings,
+  Conversation,
+  AgentMeta,
+  MCPServerConfig,
+  AgentConfig,
+  SkillMeta,
+  LLMConfig,
+};

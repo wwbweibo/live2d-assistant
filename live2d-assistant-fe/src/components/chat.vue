@@ -15,12 +15,12 @@
     </div>
     
     <!-- 空状态或欢迎界面 -->
-    <!-- <div v-if="localConversation.messages.length === 0" class="welcome-container">
+    <div v-if="localConversation.messages.length === 0" class="welcome-container">
       <div class="welcome-content">
         <div class="welcome-icon">
-          <AndroidOutlined />
+          <span class="welcome-icon-inner">✦</span>
         </div>
-        <h2 class="welcome-title">{{ systemSettings?.assistantSettings.assistantName || 'AI助手' }} 为您服务</h2>
+        <h2 class="welcome-title">{{ systemSettings?.assistantSettings.assistantName || 'AI助手' }}</h2>
         <p class="welcome-description">我是您的智能助手，可以帮助您解答问题、处理任务。开始对话吧！</p>
         <div class="welcome-suggestions">
           <div class="suggestion-item" @click="sendSuggestion('介绍一下你自己')">
@@ -31,13 +31,9 @@
             <QuestionCircleOutlined />
             <span>你能帮我做什么？</span>
           </div>
-          <div class="suggestion-item" @click="sendSuggestion('今天天气怎么样？')">
-            <i class="fas fa-cloud-sun"></i>
-            <span>今天天气怎么样？</span>
-          </div>
         </div>
       </div>
-    </div> -->
+    </div>
 
     <!-- 消息列表 -->
     <div class="messages" ref="messagesRef">
@@ -75,28 +71,36 @@ import { Flex, Input, Typography, Button, Switch } from 'ant-design-vue';
 import { Sender, Bubble, BubbleList, Prompts } from 'ant-design-x-vue';
 import type { BubbleProps, BubbleListProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
-import { UserOutlined, EditOutlined, AndroidOutlined, SearchOutlined, QuestionCircleOutlined, BookOutlined } from '@ant-design/icons-vue';
+import { UserOutlined, EditOutlined, AndroidOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
+import { computed } from 'vue';
 import { h, ref, watch, nextTick, toRef } from 'vue';
 import { PropType } from 'vue';
 import { fetchEventData } from 'fetch-sse';
 import markdownit from 'markdown-it';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, SystemSettings, ChatHistory, Conversation } from '../types/message';
-import ToolCall from './tool_call.vue';
+import { API_URL } from '../utils/api';
 
 const md = markdownit({ html: true, breaks: true });
 const isEditing = ref(false)
 const chatHeaderTitleInputRef = ref<HTMLInputElement>()
 const messagesRef = ref<HTMLDivElement>();
-const isAgent = ref(false)
-const webSearch = ref(false)
-const useRAG = ref(false)
+
+// 是否有配置 Agent：自动检测
+const hasAgents = computed(() => {
+  const raw = props.systemSettings?.assistantSettings.agents
+  if (!raw) return false
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw).length > 0 } catch { return false }
+  }
+  return (raw as any[]).length > 0
+})
 
 const roles: BubbleListProps['roles'] = {
   assistant: {
     placement: 'start',
-    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    avatar: { icon: h(AndroidOutlined), style: { background: 'linear-gradient(135deg, #6366f1, #a78bfa)', color: '#fff' } },
     messageRender: (content) =>
     h(Typography, null, {
       default: () => h('div', { innerHTML: md.render(content) }),
@@ -104,7 +108,7 @@ const roles: BubbleListProps['roles'] = {
   },
   waiting_for_input: {
     placement: 'start',
-    avatar: { icon: h(QuestionCircleOutlined), style: { background: '#fde3cf' } },
+    avatar: { icon: h(QuestionCircleOutlined), style: { background: 'linear-gradient(135deg, #f472b6, #fbbf24)', color: '#fff' } },
     messageRender: (content) =>
     h(Typography, null, {
       default: () => h('div', { innerHTML: md.render(content) }),
@@ -112,25 +116,27 @@ const roles: BubbleListProps['roles'] = {
   },
   tool: {
     placement: 'start',
-    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    avatar: { icon: h(AndroidOutlined), style: { background: 'linear-gradient(135deg, #06b6d4, #6366f1)', color: '#fff' } },
     messageRender: (content) =>{
       const tool_call = JSON.parse(content)[0]
       console.log("tool_call", tool_call)
       if (tool_call.name.startsWith('transfer_to_')) {
         return h(Typography, null, {
-          default: () => h('div', { innerHTML: md.render("移交控制权给`" + tool_call.name.replace('transfer_to_', '') + "`") }),
-        }) 
+          default: () => h('div', { innerHTML: md.render("移交控制权给 `" + tool_call.name.replace('transfer_to_', '') + "`") }),
+        })
       }
-      return h(ToolCall, {
-      function_name: tool_call.name,
-      function_args: tool_call.arguments,
-      response: tool_call.response
-    }) 
+      // 内联显示工具调用
+      return h(Typography, null, {
+        default: () => h('div', {
+          style: { padding: '8px 12px', background: '#f5f5f5', borderRadius: '8px', fontSize: '13px' },
+          innerHTML: md.render("**工具调用**: `" + tool_call.name + "`\n\n**参数**:\n```json\n" + JSON.stringify(tool_call.arguments, null, 2) + "\n```")
+        }),
+      })
     }
   },
   user: {
     placement: 'end',
-    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    avatar: { icon: h(UserOutlined), style: { background: 'linear-gradient(135deg, #34d399, #06b6d4)', color: '#fff' } },
   },
 };
 
@@ -144,57 +150,14 @@ const message2BubbleListItem = () => {
   }))
 } 
 
-const renderFooter = (components) => {
-  const { SendButton, LoadingButton, SpeechButton } = components;
-  return h(Flex, { align: 'start', gap: 'middle' }, [
-    h(AndroidOutlined, {
-      onClick: () => {
-        isAgent.value = !isAgent.value
-        if (isAgent.value) {
-          useRAG.value = false
-          webSearch.value = false
-        }
-      },
-      style: {
-        color: isAgent.value ? '#1890ff' : '#999',
-        fontSize: '20px'
-      }
-    }),
-    h(SearchOutlined, {
-      onClick: () => {
-        webSearch.value = !webSearch.value
-        if (webSearch.value) {
-          useRAG.value = false
-          isAgent.value = false
-        }
-      },
-      style: {
-        color: webSearch.value ? '#1890ff' : '#999',
-        fontSize: '20px'
-      }
-    }),
-    h(BookOutlined, {
-      onClick: () => {
-        useRAG.value = !useRAG.value
-        if (useRAG.value) {
-          isAgent.value = false
-          webSearch.value = false
-        }
-      },
-      style: {
-        color: useRAG.value ? '#1890ff' : '#999',
-        fontSize: '20px'
-      }
-    })
-  ])
-}
+const renderFooter = () => null
 
 // 获取输入框占位符文本
 const getInputPlaceholder = () => {
   if (waiting_for_input.value) {
     return '请回答上面的问题...'
   }
-  if (isAgent.value) {
+  if (hasAgents.value) {
     return '请输入您的任务，我会调用相应的工具来帮助您...'
   }
   return `与 ${props.systemSettings?.assistantSettings.assistantName || 'AI助手'} 对话...`
@@ -283,17 +246,11 @@ const sendMessage = async () => {
       loading: false
     })
     handleMessageChange(localConversation.value.messages)
-    let chat_history = localConversation.value.messages.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }))
-    // chat_history.unshift(props.system_message ? { role: 'system', content: props.system_message } : {})
-    // 请求ollama的chat接口进行回复
-    sendMessageToOllama(chat_history)
+    sendMessageToServer(message)
   }
 }
 
-const sendMessageToOllama = async (messages: ChatHistory[]) => {
+const sendMessageToServer = async (input_message: string) => {
   isMessageLoading.value = true
   const waiting_massage = {
     id: localConversation.value.messages.length + 1,
@@ -309,30 +266,18 @@ const sendMessageToOllama = async (messages: ChatHistory[]) => {
   let message = ''
   let isThinking = false
   let thinking = ''
-  // 如果系统设置中存在系统提示词，则添加到messages中
-  if (props.systemSettings?.assistantSettings.sysPrompt) {
-    messages.unshift({
-      role: 'system',
-      content: props.systemSettings.assistantSettings.sysPrompt
-    })
-  }
-  let req_path = isAgent.value ? '/api/agentic/chat' : '/api/chat'  
+  const req_path = '/api/agentic/chat'
   if (localConversation.value.key === '') {
     localConversation.value.key = uuidv4().toString()
   }
-  await fetchEventData(props.systemSettings!.serverUrl + req_path, {
+  await fetchEventData(API_URL + req_path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     data: {
-      model: props.systemSettings!.assistantSettings.model,
-      messages: messages,
-      agents: JSON.parse(props.systemSettings!.assistantSettings.agents || '[]'),
+      message: input_message,
       chat_id: localConversation.value.key,
-      is_resume: localConversation.value.messages[localConversation.value.messages.length - 1].role === 'waiting_for_input',
-      web_search: webSearch.value,
-      rag: useRAG.value
     },
     onMessage: (event) => {
       // this.isLoading = false
@@ -468,229 +413,274 @@ const handleSaveConversationLabel = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(245, 245, 245, 0));
+  background: transparent;
 }
 
+/* ─── 消息列表 ──────────────────────────────────── */
 .messages {
   width: 100%;
   height: 100%;
-  padding: 20px 10%;
+  padding: var(--space-lg) 10%;
   align-self: center;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
+  background: rgba(255, 255, 255, 0.3);
 }
-
-.messages::-webkit-scrollbar {
-  width: 5px;
-}
-
+.messages::-webkit-scrollbar { width: 4px; }
 .messages::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-}
-
-.messages::-webkit-scrollbar-track {
-  background-color: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 10px;
 }
 
 .message {
-  margin-bottom: 16px;
-  animation: fadeIn 0.3s ease;
+  margin-bottom: var(--space-md);
+  animation: fadeInUp var(--duration-normal) var(--ease-out) both;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.chat-sender {
-  /* width: 80%; */
-  align-self: center;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  background-color: #fff;
-  transition: box-shadow 0.3s ease;
-}
-
-.chat-sender:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
+/* ─── 聊天头部 ───────────────────────────────────── */
 .chat-header {
-  height: 60px;
-  margin: 16px 16px 8px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background-color: rgba(255, 255, 255, 0.8);
-  /* backdrop-filter: blur(10px); */
+  height: 56px;
+  margin: var(--space-sm) var(--space-md);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-out);
+  position: relative;
+  overflow: hidden;
 }
-
+.chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(var(--color-primary-rgb), 0.3), transparent);
+}
 .chat-header:hover {
-  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow-md), 0 0 0 1px rgba(var(--color-primary-rgb), 0.10);
 }
 
 .chat-header-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   text-align: center;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-header-actions {
-  margin-left: 10px;
-  margin-right: 10px;
+  margin-left: var(--space-sm);
   cursor: pointer;
-  color: #666;
-  transition: color 0.2s ease;
+  color: var(--text-secondary);
+  transition: color var(--duration-fast) var(--ease-out);
+  display: flex;
+  align-items: center;
 }
-
 .chat-header-actions:hover {
-  color: #1890ff;
+  color: var(--color-primary);
 }
 
 .chat-header-title-input {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  padding: var(--space-xs) var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.chat-header-title-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
 }
 
+/* ─── 欢迎页 ─────────────────────────────────────── */
 .welcome-container {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px 20px;
+  padding: var(--space-2xl) var(--space-lg);
   min-height: 400px;
 }
 
 .welcome-content {
   text-align: center;
-  max-width: 600px;
-  animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(30px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
+  max-width: 540px;
+  animation: fadeInUp var(--duration-slow) var(--ease-out) both;
 }
 
 .welcome-icon {
-  font-size: 56px;
-  margin-bottom: 24px;
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.1);
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-2xl);
+  background: var(--gradient-aurora);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 24px;
-  animation: pulse 2s infinite;
+  margin: 0 auto var(--space-lg);
+  position: relative;
+  animation: float 3s ease-in-out infinite;
+  box-shadow: 0 8px 32px rgba(var(--color-primary-rgb), 0.30),
+              0 0 60px rgba(var(--color-primary-rgb), 0.15);
+}
+.welcome-icon::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: var(--gradient-aurora);
+  opacity: 0.3;
+  filter: blur(16px);
+  z-index: -1;
+  animation: glow-pulse 3s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.3);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
-  }
+.welcome-icon-inner {
+  font-size: 40px;
+  color: #fff;
 }
 
 .welcome-title {
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #333;
-  background: linear-gradient(135deg, #1890ff, #722ed1);
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: var(--space-sm);
+  background: var(--gradient-aurora);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.02em;
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
 }
 
 .welcome-description {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 32px;
-  line-height: 1.6;
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xl);
+  line-height: 1.8;
 }
 
 .welcome-suggestions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 400px;
+  gap: var(--space-sm);
+  max-width: 360px;
   margin: 0 auto;
 }
 
 .suggestion-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(24, 144, 255, 0.05);
-  border: 1px solid rgba(24, 144, 255, 0.1);
-  border-radius: 8px;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-sm);
   cursor: pointer;
-  color: #1890ff;
-  transition: all 0.3s ease;
+  color: var(--text-primary);
   font-size: 14px;
+  font-weight: 500;
+  transition: all var(--duration-normal) var(--ease-out);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
 }
-
+.suggestion-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
 .suggestion-item:hover {
-  background: rgba(24, 144, 255, 0.1);
-  border-color: rgba(24, 144, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+  border-color: var(--color-primary-border);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(var(--color-primary-rgb), 0.20);
 }
-
+.suggestion-item:hover::before {
+  opacity: 0.06;
+}
+.suggestion-item:active {
+  transform: translateY(0);
+}
 .suggestion-item i,
-.suggestion-item .anticon {
+.suggestion-item :deep(.anticon) {
   font-size: 16px;
-  width: 16px;
+  color: var(--color-primary);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.suggestion-item span {
+  position: relative;
+  z-index: 1;
 }
 
+/* ─── 输入区 ─────────────────────────────────────── */
 .chat-input-container {
   width: 100%;
-  padding: 16px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.9), transparent);
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: linear-gradient(to top, rgba(255,255,255,1) 40%, rgba(255,255,255,0.85) 80%, transparent);
 }
 
+.chat-sender {
+  align-self: center;
+  border-radius: var(--radius-2xl) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.12) !important;
+  box-shadow: var(--glass-shadow-md), 0 0 0 1px rgba(var(--color-primary-rgb), 0.05) !important;
+  transition: all var(--duration-normal) var(--ease-out) !important;
+  overflow: hidden;
+}
+.chat-sender:hover,
+.chat-sender:focus-within {
+  border-color: rgba(var(--color-primary-rgb), 0.25) !important;
+  box-shadow: var(--glass-shadow), 0 0 30px rgba(var(--color-primary-rgb), 0.08) !important;
+}
+
+/* ─── 加载动画 ─────────────────────────────────── */
 .loading-indicator {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 16px;
+  padding: var(--space-md);
+  animation: fadeIn var(--duration-normal) var(--ease-out);
 }
 
 .loading-content {
   text-align: center;
-  max-width: 600px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .loading-dots {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   justify-content: center;
 }
 
@@ -698,35 +688,23 @@ const handleSaveConversationLabel = () => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #1890ff;
-  animation: blink 1.4s infinite both;
+  background: var(--gradient-primary);
+  animation: dot-bounce 1.4s infinite both;
 }
 
-.loading-dots span:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.loading-dots span:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-.loading-dots span:nth-child(3) {
-  animation-delay: 0s;
-}
-
-@keyframes blink {
-  0%, 80%, 100% {
-    transform: scale(0.5);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+.loading-dots span:nth-child(3) { animation-delay: 0s; }
 
 .loading-text {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
-  color: #333;
-  margin-top: 16px;
+  color: var(--text-secondary);
+  margin-top: var(--space-sm);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

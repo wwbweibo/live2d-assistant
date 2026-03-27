@@ -1,43 +1,23 @@
 [project]
 name = "live2d-assistant-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "Live2D Assistant Server"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
-    "mcp",
-    "ollama",
     "openai",
     "python-dotenv",
     "fastapi[standard]",
     "uvicorn",
     "pydantic",
     "requests",
-    "selenium",
-    "beautifulsoup4",
-    "torch",
-    "torchaudio",
-    "python-dotenv",
-    "langchain",
-    "langchain-community",
-    "langchain-openai",
-    "langgraph",
-    "ChatTTS",
-    "duckduckgo-search",
-    "langchain-mcp-adapters",
-    "pymilvus",
-    "sentence-transformers",
-    "jieba",
-    "PyMuPDF",
-    "python-docx",
-    "pytesseract",
-    "Pillow",
-    "transformers",
-    "docx2txt",
-    "rapidocr-onnxruntime>=1.4.4",
+    "agentic-agents",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
 ]
+
+[tool.uv.sources]
+agentic-agents = { path = "external/agentic-agent" }

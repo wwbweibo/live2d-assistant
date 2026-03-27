@@ -1,124 +1,121 @@
 <template>
-    <div class="mcp-server-list-item">
-        <div class="mcp-server-list-item-header">
-            <div class="mcp-server-list-item-header-title">
-                <div>
-                    {{ item.name }}
-                </div>
-                <div class="mcp-server-list-item-header-status" :style="{ backgroundColor: statusColor }">
-                </div>
-                <div class="mcp-server-list-item-header-transport">
-                    {{ item.transport }}
-                </div>
-            </div>
-        </div>
-        <div class="mcp-server-list-item-tools">
-            <div class="mcp-server-list-item-tools-item" v-for="tool in item.tools" :key="tool.name">
-                <Tooltip :title="tool.description">
-                    <Tag>{{ tool.name }}</Tag>
-                </Tooltip>
-            </div>
-        </div>
-        <div class="mcp-server-list-item-body">
-            <div class="mcp-server-list-item-body-url" v-if="item.url">
-                <label>URL:</label>
-                {{ item.url }}
-            </div>
-            <div class="mcp-server-list-item-body-command" v-if="item.command">
-                <label>Command:</label>
-                {{ item.command }}
-            </div>
-            <div class="mcp-server-list-item-body-args" v-if="item.args">
-                <label>Args:</label>
-                {{ item.args }}
-            </div>
-        </div>
+  <div class="mcp-card">
+    <div class="mcp-header">
+      <div class="mcp-name">
+        <ApiOutlined class="mcp-icon" />
+        <span>{{ item.name }}</span>
+        <span class="mcp-transport">{{ item.transport }}</span>
+      </div>
+      <div class="mcp-actions">
+        <Button size="small" type="text" @click="$emit('edit', item)">
+          <EditOutlined />
+        </Button>
+        <Popconfirm title="确定删除该 MCP Server？" @confirm="$emit('delete', item)">
+          <Button size="small" type="text" danger>
+            <DeleteOutlined />
+          </Button>
+        </Popconfirm>
+      </div>
     </div>
+    <div class="mcp-info">
+      <template v-if="item.transport === 'stdio'">
+        <span v-if="item.command" class="info-tag">{{ item.command }} {{ (item.args || []).join(' ') }}</span>
+        <span v-if="item.cwd" class="info-tag secondary">{{ item.cwd }}</span>
+      </template>
+      <template v-else>
+        <span v-if="item.url" class="info-tag">{{ item.url }}</span>
+      </template>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import type { MCPServer } from '../types/message';
-import { ref, computed } from 'vue';
-import { Tag, Tooltip } from 'ant-design-vue';
-const props = defineProps<{
-    item: MCPServer;
-}>()
+import { ApiOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons-vue';
+import { Button, Popconfirm } from 'ant-design-vue';
+import type { MCPServerConfig } from '../types/message';
 
-const statusColor = computed(() => {
-    return props.item.status === 'online' ? 'green' : 'red'
-})
+defineProps<{
+  item: MCPServerConfig;
+}>();
 
+defineEmits<{
+  (e: 'edit', item: MCPServerConfig): void;
+  (e: 'delete', item: MCPServerConfig): void;
+}>();
 </script>
 
 <style scoped>
-.mcp-server-list-item {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 10px;
+.mcp-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: all 0.2s ease;
 }
 
-.mcp-server-list-item-header {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
+.mcp-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.12);
 }
 
-.mcp-server-list-item-header-title {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    font-size: 16px;
-    font-weight: bold;
+.mcp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
-.mcp-server-list-item-header-transport {
-    font-size: 12px;
-    color: #ccc;
-    align-self: flex-end;
+.mcp-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
 }
 
-.mcp-server-list-item-header-status {
-    font-size: 12px;
-    align-self: flex-start;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+.mcp-icon {
+  color: var(--color-primary);
+  font-size: 16px;
 }
 
-.mcp-server-list-item-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.mcp-transport {
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-primary);
+  padding: 1px 8px;
+  border-radius: 10px;
 }
 
-.mcp-server-list-item-body-url {
-    font-size: 12px;
-    color: #777;
+.mcp-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-.mcp-server-list-item-body-command {
-    font-size: 12px;
-    color: #ccc;
+.mcp-card:hover .mcp-actions {
+  opacity: 1;
 }
 
-.mcp-server-list-item-body-args {
-    font-size: 12px;
-    color: #ccc;
+.mcp-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.mcp-server-list-item-tools {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    flex-wrap: wrap;
+.info-tag {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 
-.mcp-server-list-item-tools-item {
-    font-size: 12px;
-    color: #ccc;
+.info-tag.secondary {
+  color: var(--text-tertiary);
 }
 </style>
