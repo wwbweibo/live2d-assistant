@@ -1,8 +1,8 @@
 import { API_URL } from './api'
-import type { AgentConfig, LLMConfig, SkillMeta, MCPServerConfig } from '../types/message'
+import type { AgentConfig, LLMConfig, SkillMeta, MCPServerConfig, MCPServerResp } from '../types/message'
 
 // Re-export types for backward compatibility
-export type { LLMConfig, AgentConfig, SkillMeta, MCPServerConfig }
+export type { LLMConfig, AgentConfig, SkillMeta, MCPServerConfig, MCPServerResp }
 export type { AgentMeta } from '../types/message'
 
 // LLM 配置
@@ -65,7 +65,7 @@ export async function deleteSkillByName(name: string): Promise<{ success: boolea
 }
 
 // MCP Server 配置
-export async function getMcpServersConfig(): Promise<MCPServerConfig[]> {
+export async function getMcpServersConfig(): Promise<MCPServerResp[]> {
   const resp = await fetch(`${API_URL}/api/settings/mcp-servers`)
   return resp.json()
 }

@@ -18,6 +18,11 @@ export interface MCPServerConfig {
   headers?: Record<string, string>
 }
 
+export interface MCPServerResp extends MCPServerConfig {
+  connected: boolean
+  tools: string[]
+}
+
 export interface AgentConfig {
   metadata: Record<string, unknown>
   agents: AgentMeta[]
@@ -91,6 +96,7 @@ export type {
   Conversation,
   AgentMeta,
   MCPServerConfig,
+  MCPServerResp,
   AgentConfig,
   SkillMeta,
   LLMConfig,

@@ -1,11 +1,19 @@
 <template>
   <div class="llm-settings">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading">
-      <span>加载配置中...</span>
+    <div class="llm-settings-header">
+      <div class="header-title">
+        <CloudOutlined class="header-icon" />
+        <span>LLM 设置</span>
+      </div>
     </div>
 
-    <template v-else>
+    <div class="llm-settings-content">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading">
+        <span>加载配置中...</span>
+      </div>
+
+      <template v-else>
       <!-- Provider -->
       <div class="setting-section">
         <div class="section-label">模型供应商</div>
@@ -83,13 +91,14 @@
         </div>
       </div>
     </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
 import { Button, message } from 'ant-design-vue';
-import { SendOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons-vue';
+import { SendOutlined, CheckCircleFilled, CloseCircleFilled, CloudOutlined } from '@ant-design/icons-vue';
 import { CloudServerOutlined, AmazonOutlined } from '@ant-design/icons-vue';
 import { getLLMConfig, updateLLMConfig } from '../utils/configApi';
 
@@ -198,6 +207,47 @@ const testConnection = async () => {
 
 <style scoped>
 .llm-settings {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-md);
+  gap: var(--space-md);
+}
+
+.llm-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header-icon {
+  font-size: 20px;
+  color: var(--color-primary);
+}
+
+.llm-settings-content {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);

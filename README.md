@@ -73,10 +73,12 @@ interface AgentConfig {
 ```
 
 ### SSE 事件格式
-- `{"type": "text", "content": "..."}` - 文本响应
-- `{"type": "tool_calls", "content": [...]}` - 工具调用
-- `{"type": "done"}` - 结束
-- `{"type": "error", "content": "..."}` - 错误
+- `{"resp_type": "text", "agent": "...", "content": "..."}` - 文本响应
+- `{"resp_type": "tool_result", "agent": "...", "content": "..."}` - 工具执行结果
+- `{"resp_type": "transfer", "from_agent": "...", "to_agent": "...", "reason": "..."}` - Agent 转移
+- `{"resp_type": "status", "content": "..."}` - 状态提示
+- `{"resp_type": "finished", "content": "..."}` - 结束
+- `{"resp_type": "error", "content": "..."}` - 错误
 
 ## License
 MIT

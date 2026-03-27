@@ -21,3 +21,6 @@ dev = [
 
 [tool.uv.sources]
 agentic-agents = { path = "external/agentic-agent" }
+
+[tool.setuptools.packages.find]
+include = ["live2d_server*"]

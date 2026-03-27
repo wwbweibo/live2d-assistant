@@ -59,7 +59,6 @@
       <Sender class="chat-sender" 
             @submit="sendMessage" 
             v-model:value="value"
-            :footer="renderFooter"
             :placeholder="getInputPlaceholder()"
             />
     </div>
@@ -71,7 +70,7 @@ import { Flex, Input, Typography, Button, Switch } from 'ant-design-vue';
 import { Sender, Bubble, BubbleList, Prompts } from 'ant-design-x-vue';
 import type { BubbleProps, BubbleListProps } from 'ant-design-x-vue';
 // import { onWatcherCleanup, ref, watch } from 'vue';
-import { UserOutlined, EditOutlined, AndroidOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue';
+import { UserOutlined, EditOutlined, AndroidOutlined, QuestionCircleOutlined, SwapOutlined, ToolOutlined } from '@ant-design/icons-vue';
 import type { CSSProperties } from 'vue';
 import { computed } from 'vue';
 import { h, ref, watch, nextTick, toRef } from 'vue';
@@ -114,25 +113,68 @@ const roles: BubbleListProps['roles'] = {
       default: () => h('div', { innerHTML: md.render(content) }),
     }) 
   },
-  tool: {
+  tool_result: {
     placement: 'start',
-    avatar: { icon: h(AndroidOutlined), style: { background: 'linear-gradient(135deg, #06b6d4, #6366f1)', color: '#fff' } },
-    messageRender: (content) =>{
-      const tool_call = JSON.parse(content)[0]
-      console.log("tool_call", tool_call)
-      if (tool_call.name.startsWith('transfer_to_')) {
-        return h(Typography, null, {
-          default: () => h('div', { innerHTML: md.render("移交控制权给 `" + tool_call.name.replace('transfer_to_', '') + "`") }),
-        })
+    avatar: { icon: h(ToolOutlined), style: { background: 'linear-gradient(135deg, #06b6d4, #6366f1)', color: '#fff' } },
+    messageRender: (content) => {
+      try {
+        const data = JSON.parse(content)
+        return h('details', {
+          class: 'tool-result-collapse',
+        }, [
+          h('summary', {
+            class: 'tool-result-summary',
+          }, [
+            h('span', { style: { fontWeight: '600' } }, '工具: '),
+            h('code', null, data.tool_name),
+          ]),
+          h('div', {
+            class: 'tool-result-content',
+            innerHTML: md.render(`\`\`\`\n${data.content}\n\`\`\``)
+          }),
+        ])
+      } catch {
+        return h('details', {
+          class: 'tool-result-collapse',
+        }, [
+          h('summary', { class: 'tool-result-summary' }, '工具调用结果'),
+          h('div', {
+            class: 'tool-result-content',
+            innerHTML: md.render(content)
+          }),
+        ])
       }
-      // 内联显示工具调用
-      return h(Typography, null, {
-        default: () => h('div', {
-          style: { padding: '8px 12px', background: '#f5f5f5', borderRadius: '8px', fontSize: '13px' },
-          innerHTML: md.render("**工具调用**: `" + tool_call.name + "`\n\n**参数**:\n```json\n" + JSON.stringify(tool_call.arguments, null, 2) + "\n```")
-        }),
-      })
     }
+  },
+  transfer: {
+    placement: 'start',
+    avatar: { icon: h(SwapOutlined), style: { background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff' } },
+    messageRender: (content) => {
+      try {
+        const data = JSON.parse(content)
+        return h('div', { class: 'transfer-card' }, [
+          h('div', { class: 'transfer-agents' }, [
+            h('span', { class: 'transfer-agent from' }, data.from_agent),
+            h('span', { class: 'transfer-arrow' }),
+            h('span', { class: 'transfer-agent to' }, data.to_agent),
+          ]),
+          data.reason ? h('div', { class: 'transfer-reason' }, data.reason) : null,
+        ])
+      } catch {
+        return h('div', { innerHTML: md.render(content) })
+      }
+    }
+  },
+  status: {
+    placement: 'start',
+    avatar: { icon: h(AndroidOutlined), style: { background: 'linear-gradient(135deg, #6366f1, #a78bfa)', color: '#fff' } },
+    messageRender: (content) =>
+    h(Typography, null, {
+      default: () => h('div', {
+        style: { padding: '6px 12px', color: '#6b7280', fontSize: '12px', fontStyle: 'italic' },
+        innerHTML: content
+      }),
+    })
   },
   user: {
     placement: 'end',
@@ -141,16 +183,16 @@ const roles: BubbleListProps['roles'] = {
 };
 
 const message2BubbleListItem = () => {
-  return localConversation.value.messages.map(msg => ({
-    key: msg.id,
-    role: msg.role,
-    content: msg.content,
-    timestamp: msg.timestamp,
-    loading: msg.loading
-  }))
+  return localConversation.value.messages
+    .filter(msg => msg.content && msg.content.trim() !== '')
+    .map(msg => ({
+      key: msg.id,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      loading: msg.loading
+    }))
 } 
-
-const renderFooter = () => null
 
 // 获取输入框占位符文本
 const getInputPlaceholder = () => {
@@ -263,7 +305,6 @@ const sendMessageToServer = async (input_message: string) => {
   // 先往messages中添加一个loading的消息
   localConversation.value.messages.push(waiting_massage)
   let waiting_removed = false
-  let message = ''
   let isThinking = false
   let thinking = ''
   const req_path = '/api/agentic/chat'
@@ -280,36 +321,45 @@ const sendMessageToServer = async (input_message: string) => {
       chat_id: localConversation.value.key,
     },
     onMessage: (event) => {
-      // this.isLoading = false
       const data = JSON.parse(event!.data)
-      // 文本消息处理
-      if (data.type === 'text' && data.content !== '') {
+      const respType = data.resp_type
+
+      // 辅助函数：移除 waiting 消息
+      const removeWaiting = () => {
         if (!waiting_removed) {
-          // waiting_massage is always last one, remove last message, then add a new assistant message
           localConversation.value.messages.pop()
           waiting_removed = true
           isMessageLoading.value = false
-          localConversation.value.messages.push({
-            id: localConversation.value.messages.length + 1,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date().toLocaleString(),
-            loading: false
-          })
         }
-        let last_message = localConversation.value.messages[localConversation.value.messages.length - 1]
-        if (last_message.role !== 'assistant') {
-          // 如果last_message 不是assistant，添加一条新的assistant消息
-          last_message = {
+      }
+
+      // 确保存在一条 assistant 消息用于追加文本
+      const ensureAssistantMessage = () => {
+        let last = localConversation.value.messages[localConversation.value.messages.length - 1]
+        if (!last || last.role !== 'assistant') {
+          last = {
             id: localConversation.value.messages.length + 1,
             role: 'assistant',
             content: '',
             timestamp: new Date().toLocaleString(),
             loading: false
           }
-          localConversation.value.messages.push(last_message)
+          localConversation.value.messages.push(last)
         }
-        if (data.content === '<think>' || isThinking) {          // 正在输出thinking的内容
+        return last
+      }
+
+      if (respType === 'status') {
+        // Agent 状态提示（思考中等），更新 loading 文字即可，不添加消息
+        return
+      }
+
+      if (respType === 'text' && data.content) {
+        removeWaiting()
+        let last_message = ensureAssistantMessage()
+
+        // 处理 <think> 标签
+        if (data.content === '<think>' || isThinking) {
           if (data.content === '</think>') {
             isThinking = false
             return
@@ -322,40 +372,60 @@ const sendMessageToServer = async (input_message: string) => {
           last_message.content += data.content
         }
         localConversation.value.messages = [...localConversation.value.messages]
-      } else if (data.type === 'tool_calls' && data.content !== '') {
-        if (!waiting_removed) {
-          localConversation.value.messages.pop()
-          waiting_removed = true
-          isMessageLoading.value = false
+        return
+      }
+
+      if (respType === 'tool_result') {
+        removeWaiting()
+        // 显示工具执行结果
+        const toolData = {
+          tool_name: data.tool_name || data.agent || 'tool',
+          content: typeof data.content === 'string' ? data.content : JSON.stringify(data.content)
         }
-        // 特殊处理 request_user_input 工具调用
-        if (data.content.some(c => c.name === 'request_user_input')) {
-          // 添加一条assistant消息，内容为等待用户输入
-          let tc = data.content.find(c => c.name === 'request_user_input')
-          if (tc) {
-          localConversation.value.messages.push({
-            id: localConversation.value.messages.length + 1,
-            role: 'waiting_for_input',
-            content: tc.arguments.prompt,
-            timestamp: new Date().toLocaleString(),
-            loading: false
-          })
-          waiting_for_input.value = true
-          // 移除该工具调用
-          data.content = data.content.filter(c => c.name !== 'request_user_input')
-          }
-        }
-        if (data.content.length > 0) {
-        const content = JSON.stringify(data.content)
-        const message = {
+        localConversation.value.messages.push({
           id: localConversation.value.messages.length + 1,
-          role: 'tool',
-          content: content,
+          role: 'tool_result',
+          content: JSON.stringify(toolData),
           timestamp: new Date().toLocaleString(),
           loading: false
-        }
-        localConversation.value.messages.push(message)
+        })
+        return
       }
+
+      if (respType === 'transfer') {
+        removeWaiting()
+        const transferData = {
+          from_agent: data.from_agent || '',
+          to_agent: data.to_agent || '',
+          reason: data.reason || ''
+        }
+        localConversation.value.messages.push({
+          id: localConversation.value.messages.length + 1,
+          role: 'transfer',
+          content: JSON.stringify(transferData),
+          timestamp: new Date().toLocaleString(),
+          loading: false
+        })
+        // 转移后重新进入 thinking 状态
+        isMessageLoading.value = true
+        return
+      }
+
+      if (respType === 'error') {
+        removeWaiting()
+        localConversation.value.messages.push({
+          id: localConversation.value.messages.length + 1,
+          role: 'assistant',
+          content: `⚠️ ${data.content || '发生错误'}`,
+          timestamp: new Date().toLocaleString(),
+          loading: false
+        })
+        return
+      }
+
+      if (respType === 'finished') {
+        removeWaiting()
+        return
       }
     }
   }).then(() => {
@@ -379,31 +449,8 @@ const handleEditConversationLabel = () => {
 
 const handleSaveConversationLabel = () => {
   isEditing.value = false
-  // localConversation.value.label = chatHeaderTitleInputRef.value?.value as string
   props.onNewMessage(localConversation.value)
 }
-
-// async playAudio(wav_data) {
-//   for (let i = 0; i < wav_data.length; i++) {
-//     // base64解码
-//     const binaryString = window.atob(wav_data[i]);
-//     const len = binaryString.length;
-//     const bytes = new Uint8Array(len);
-//     for (let i = 0; i < len; i++) {
-//       bytes[i] = binaryString.charCodeAt(i);
-//     }
-//     const audioContext = new AudioContext();
-//     const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
-//     const source = audioContext.createBufferSource();
-//     source.buffer = audioBuffer;
-//     source.connect(audioContext.destination);
-//     source.start();
-//     // 等待音频播放完毕
-//     await new Promise(resolve => {
-//       source.onended = resolve;
-//     });
-//   }
-// }
 
 </script>
 
@@ -431,6 +478,99 @@ const handleSaveConversationLabel = () => {
 .messages::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);
   border-radius: 10px;
+}
+
+/* ─── 气泡白底 ───────────────────────────────────── */
+.messages :deep(.ant-bubble-content) {
+  background: #fff !important;
+}
+
+/* ─── 工具结果折叠 ────────────────────────────────── */
+.messages :deep(.tool-result-collapse) {
+  padding: 8px 12px;
+  background: rgba(99,102,241,0.06);
+  border-radius: 8px;
+  font-size: 13px;
+  border-left: 3px solid #6366f1;
+}
+.messages :deep(.tool-result-summary) {
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-primary);
+  list-style: disclosure-closed;
+}
+.messages :deep(.tool-result-collapse[open]) .tool-result-summary {
+  list-style: disclosure-open;
+  margin-bottom: 8px;
+}
+.messages :deep(.tool-result-summary code) {
+  background: rgba(99,102,241,0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6366f1;
+}
+.messages :deep(.tool-result-content) {
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.messages :deep(.tool-result-content pre) {
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+/* ─── 移交控制权卡片 ─────────────────────────────── */
+.messages :deep(.transfer-card) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.messages :deep(.transfer-agents) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.messages :deep(.transfer-agent) {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.messages :deep(.transfer-agent.from) {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+.messages :deep(.transfer-agent.to) {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+}
+.messages :deep(.transfer-arrow) {
+  width: 20px;
+  height: 2px;
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  border-radius: 1px;
+  position: relative;
+  flex-shrink: 0;
+}
+.messages :deep(.transfer-arrow)::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 4px solid transparent;
+  border-left: 5px solid #6366f1;
+}
+.messages :deep(.transfer-reason) {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .message {

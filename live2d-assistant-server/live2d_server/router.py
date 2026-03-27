@@ -1,15 +1,13 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 import json
-import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
 from agentic_agents import AgentSession, build_agents
 from agentic_agents.session import SQLiteSessionStorage
-from agentic_agents.agents import AgentConfig, AgentMeta
+from agentic_agents.agents import AgentConfig
 from agentic_agents.agents.agent_meta import MCPServerConfig
-from live2d_server.agentic import build_session_agents
 from live2d_server.agentic.agent_builder import create_llm
 from live2d_server.agentic.model import SkillMeta
 from live2d_server.config_store import (
@@ -24,7 +22,13 @@ from live2d_server.config_store import (
     get_mcp_servers_config,
     upsert_mcp_server,
     delete_mcp_server_by_name,
+    mcp_status,
 )
+
+class MCPServerResp(MCPServerConfig):
+    """MCP Server 响应模型，包含连接状态和可用工具列表."""
+    connected: bool
+    tools: list[str] = []
 
 logger = logging.getLogger(__name__)
 
@@ -110,24 +114,32 @@ async def delete_skill_api(name: str):
 
 # ─── MCP Server 配置接口 ────────────────────────────
 
-@router.get('/api/settings/mcp-servers', response_model=list[MCPServerConfig])
+@router.get('/api/settings/mcp-servers', response_model=list[MCPServerResp])
 async def get_mcp_servers_config_api():
     """获取所有 MCP Server 配置"""
     servers = get_mcp_servers_config()
-    return [MCPServerConfig(**s) for s in servers]
+    resp = []
+    for s in servers:
+        try:
+            tools = await mcp_status(s["name"])
+            resp.append(MCPServerResp(**s, connected=True, tools=[t.name for t in tools]))
+        except Exception as e:
+            logger.error(f"Failed to connect to MCP server '{s['name']}': {e}")
+            resp.append(MCPServerResp(**s, connected=False, tools=[]))
+    return resp
 
 
 @router.post('/api/settings/mcp-servers')
 async def upsert_mcp_server_api(server: MCPServerConfig):
     """创建或更新单个 MCP Server"""
-    updated = upsert_mcp_server(server.model_dump(exclude_none=True))
+    updated = await upsert_mcp_server(server.model_dump(exclude_none=True))
     return {"success": True, "server": updated}
 
 
 @router.delete('/api/settings/mcp-servers/{name}')
 async def delete_mcp_server_api(name: str):
     """删除指定 MCP Server"""
-    success = delete_mcp_server_by_name(name)
+    success = await delete_mcp_server_by_name(name)
     return {"success": success}
 
 
@@ -143,6 +155,7 @@ async def agentic_chat(request: ChatRequest):
     llm_config = get_llm_config()
     db_agent_config= get_agents_config()
     agent_config = AgentConfig(**db_agent_config)
+    agent_config.mcp_servers =[MCPServerConfig(**s) for s in get_mcp_servers_config()]
     llm = create_llm(
         llm_config['provider'],
         llm_config["model"],
@@ -153,6 +166,7 @@ async def agentic_chat(request: ChatRequest):
         session_id=request.chat_id,
         db_path="./.sessions/sessions.db",
     )
+    logger.info(f"building agents with config: {agent_config.model_dump()}")
     session = AgentSession(
         session_id=request.chat_id,
         agent_factory=build_agents,

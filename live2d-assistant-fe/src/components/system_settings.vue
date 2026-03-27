@@ -1,7 +1,14 @@
 <template>
-    <div class="settings-section">
-        <Collapse v-model:activeKey="collapseActiveKey">
-            <CollapsePanel header="Live2D 设置" key="live2d">
+  <div class="system-settings">
+    <div class="system-settings-header">
+      <div class="header-title">
+        <SettingOutlined class="header-icon" />
+        <span>系统设置</span>
+      </div>
+    </div>
+    <div class="system-settings-content">
+      <Collapse v-model:activeKey="collapseActiveKey">
+        <CollapsePanel header="Live2D 设置" key="live2d">
                 <div class="setting-item">
                     <label>背景图片</label>
                     <div class="setting-control">
@@ -37,15 +44,17 @@
                         <ColorPicker v-model:pureColor="settings.live2DSettings.themeColor" @pureColorChange="updateSettings"/>
                     </div>
                 </div>
-            </CollapsePanel>
-        </Collapse>
+        </CollapsePanel>
+      </Collapse>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { PropType, ref } from 'vue';
 import { SystemSettings } from '../types/message';
 import { Collapse, CollapsePanel, Slider } from 'ant-design-vue';
+import { SettingOutlined } from '@ant-design/icons-vue';
 import { ColorPicker } from "vue3-colorpicker";
 import "vue3-colorpicker/style.css";
 
@@ -69,10 +78,49 @@ const updateSettings = () => {
 </script>
 
 <style scoped>
-/* ─── 设置区容器 ────────────────────────────────── */
-.settings-section {
+/* ─── 整体布局 ────────────────────────────────── */
+.system-settings {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-md);
+  gap: var(--space-md);
+}
+
+.system-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-xs);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header-icon {
+  font-size: 20px;
+  color: var(--color-primary);
+}
+
+.system-settings-content {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
 }
 
 /* ─── 设置项 ─────────────────────────────────────── */

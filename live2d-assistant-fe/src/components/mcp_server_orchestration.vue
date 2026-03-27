@@ -47,7 +47,7 @@
 import { ref, onMounted } from 'vue';
 import { ApiOutlined, PlusOutlined } from '@ant-design/icons-vue';
 import { Button, message } from 'ant-design-vue';
-import type { MCPServerConfig } from '../types/message';
+import type { MCPServerConfig, MCPServerResp } from '../types/message';
 import McpServerListItem from './mcp_server_list_item.vue';
 import McpServerEditorModal from './mcp_server_editor_modal.vue';
 import { getMcpServersConfig, upsertMcpServer, deleteMcpServerByName } from '../utils/configApi';
@@ -55,7 +55,7 @@ import { getMcpServersConfig, upsertMcpServer, deleteMcpServerByName } from '../
 const editorVisible = ref(false);
 const editingServer = ref<MCPServerConfig | null>(null);
 const loading = ref(true);
-const servers = ref<MCPServerConfig[]>([]);
+const servers = ref<MCPServerResp[]>([]);
 
 const loadServers = async () => {
   loading.value = true;
@@ -113,6 +113,12 @@ const handleDelete = async (name: string) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow-sm);
 }
 
 .header-title {
@@ -126,12 +132,17 @@ const handleDelete = async (name: string) => {
 
 .header-icon {
   color: var(--color-primary);
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .mcp-orchestration-content {
   flex: 1;
   overflow-y: auto;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
 }
 
 .mcp-cards {

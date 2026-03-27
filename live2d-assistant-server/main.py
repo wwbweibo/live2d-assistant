@@ -5,6 +5,10 @@ import argparse
 import logging
 from live2d_server.router import router
 from contextlib import asynccontextmanager
+from live2d_server.config_store import (
+    get_mcp_servers_config,
+    _connect_to_mcp_server
+)
 import uvicorn
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -18,6 +22,9 @@ async def lifespan(app: FastAPI):
     app.include_router(router)
     if static_path:
         app.mount("/", StaticFiles(directory=static_path, html=True), name="static")
+    mcp_servers = get_mcp_servers_config()
+    for s in mcp_servers:
+        await _connect_to_mcp_server(s)
     yield
 
 def main(app: FastAPI):

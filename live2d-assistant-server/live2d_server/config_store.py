@@ -6,6 +6,8 @@ import json
 import sqlite3
 import os
 from contextlib import contextmanager
+from agentic_agents.mcp import connect_mcp_server, disconnect_mcp_server, get_mcp_client
+from agentic_agents.tools import AgentTool
 
 DB_PATH = "./.config.db"
 
@@ -84,9 +86,16 @@ def init_db():
         """)
         cursor.execute("SELECT COUNT(*) FROM skills_config")
         if cursor.fetchone()[0] == 0:
+            builtin_skills = [
+                {
+                    "name": "web_search",
+                    "description": "使用 SearxNG 搜索引擎进行网络搜索，获取实时信息和搜索结果。",
+                    "instruction": "使用 searx_search 工具搜索网络信息，根据用户问题构造合适的搜索关键词。",
+                },
+            ]
             cursor.execute(
                 "INSERT INTO skills_config (id, config) VALUES (1, ?)",
-                (json.dumps([]),),
+                (json.dumps(builtin_skills, ensure_ascii=False),),
             )
         # MCP Server 配置表 — 存储 MCPServerConfig 列表 JSON（单行）
         cursor.execute("""
@@ -250,24 +259,66 @@ def update_mcp_servers_config(servers: list[dict]) -> list[dict]:
     return servers
 
 
-def upsert_mcp_server(server: dict) -> dict:
+async def upsert_mcp_server(server: dict) -> dict:
     """新增或更新单个 MCP Server（按 name 匹配）"""
     servers = get_mcp_servers_config()
     idx = next((i for i, s in enumerate(servers) if s.get("name") == server["name"]), None)
     if idx is not None:
+        name = server["name"]
+        await disconnect_mcp_server(name)
+        await _connect_to_mcp_server(server)
         servers[idx] = server
     else:
+        await _connect_to_mcp_server(server)
         servers.append(server)
     update_mcp_servers_config(servers)
     return server
 
+async def _connect_to_mcp_server(server: dict):
+    """连接到 MCP Server 并返回客户端实例"""
+    print(server)
+    name = server["name"]
+    transport_type = server["transport"]
+    if transport_type == "stdio":
+        command = server.get("command")
+        args = server.get("args", [])
+        env = server.get("env", {})
+        cwd = server.get("cwd")
+        await connect_mcp_server(
+            name=name,
+            transport=transport_type,
+            command=command,
+            args=args,
+            env=env,
+            cwd=cwd,
+        )
+    if transport_type in ("streamable_http", "sse"):
+        url = server.get("url")
+        auth = server.get("auth")
+        headers = server.get("headers", {})
+        await connect_mcp_server(
+            name=name,
+            transport=transport_type,
+            url=url,
+            auth=auth,
+            headers=headers,
+        )
 
-def delete_mcp_server_by_name(name: str) -> bool:
+async def delete_mcp_server_by_name(name: str) -> bool:
     """删除指定名称的 MCP Server"""
     servers = get_mcp_servers_config()
     original_len = len(servers)
     servers = [s for s in servers if s.get("name") != name]
     if len(servers) < original_len:
         update_mcp_servers_config(servers)
+        await disconnect_mcp_server(name)
         return True
     return False
+
+async def mcp_status(name: str) -> list[AgentTool]:
+    """检查指定 MCP Server 的连接状态"""
+    mcp_client = get_mcp_client(name)
+    if not mcp_client:
+        raise ValueError(f"MCP server '{name}' is not connected")
+    tools = await mcp_client.list_tools()
+    return tools

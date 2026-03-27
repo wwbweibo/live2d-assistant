@@ -694,9 +694,9 @@ onUnmounted(() => {
 .ai-assistant-container-right {
   flex: 1;
   height: 100%;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  /* background: rgba(255, 255, 255, 0.88); */
+  backdrop-filter: blur(5px) saturate(160%);
+  -webkit-backdrop-filter: blur(5px) saturate(160%);
   display: flex;
   flex-direction: column;
 }

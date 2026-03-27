@@ -253,17 +253,17 @@ html, body {
 }
 
 /* ─── Ant Design X Bubble 覆盖 ─────────────────────── */
-.ant-bubble-content-filled {
+/* .ant-bubble-content-filled {
   background-color: transparent !important;
-}
+} */
 
-.ant-bubble-bubble {
+/* .ant-bubble-bubble {
   border-radius: var(--radius-xl) !important;
   font-family: var(--font-sans) !important;
   background: rgba(255, 255, 255, 0.85) !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
   border: 1px solid rgba(0, 0, 0, 0.04) !important;
-}
+} */
 
 /* 用户气泡 — 右侧深色 */
 .ant-bubble-end .ant-bubble-bubble {

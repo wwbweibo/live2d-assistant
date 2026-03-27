@@ -1,10 +1,13 @@
 <template>
-  <div class="mcp-card">
+  <div class="mcp-card" :class="{ 'mcp-connected': item.connected, 'mcp-disconnected': !item.connected }">
     <div class="mcp-header">
       <div class="mcp-name">
         <ApiOutlined class="mcp-icon" />
         <span>{{ item.name }}</span>
         <span class="mcp-transport">{{ item.transport }}</span>
+        <span class="mcp-status" :class="item.connected ? 'status-ok' : 'status-err'">
+          {{ item.connected ? '已连接' : '未连接' }}
+        </span>
       </div>
       <div class="mcp-actions">
         <Button size="small" type="text" @click="$emit('edit', item)">
@@ -26,21 +29,25 @@
         <span v-if="item.url" class="info-tag">{{ item.url }}</span>
       </template>
     </div>
+    <div v-if="item.tools && item.tools.length > 0" class="mcp-tools">
+      <span class="tools-label">工具 ({{ item.tools.length }}):</span>
+      <span v-for="t in item.tools" :key="t" class="tool-tag">{{ t }}</span>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ApiOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons-vue';
 import { Button, Popconfirm } from 'ant-design-vue';
-import type { MCPServerConfig } from '../types/message';
+import type { MCPServerResp } from '../types/message';
 
 defineProps<{
-  item: MCPServerConfig;
+  item: MCPServerResp;
 }>();
 
 defineEmits<{
-  (e: 'edit', item: MCPServerConfig): void;
-  (e: 'delete', item: MCPServerConfig): void;
+  (e: 'edit', item: MCPServerResp): void;
+  (e: 'delete', item: MCPServerResp): void;
 }>();
 </script>
 
@@ -117,5 +124,45 @@ defineEmits<{
 
 .info-tag.secondary {
   color: var(--text-tertiary);
+}
+
+.mcp-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.status-ok {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.status-err {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.mcp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tools-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+
+.tool-tag {
+  font-size: 11px;
+  color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-family: 'SF Mono', Monaco, monospace;
 }
 </style>

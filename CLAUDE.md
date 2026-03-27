@@ -67,7 +67,7 @@ npm run package       # 打包桌面应用
                         → 用户接收结果
 ```
 
-SSE 事件格式：`{"type": "text"|"tool_calls"|"done"|"error"}`
+SSE 事件格式：`{"resp_type": "status"|"text"|"tool_result"|"transfer"|"error"|"finished"}`
 
 ## 依赖说明
 

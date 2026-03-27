@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: live2d-assistant-server
+Version: 0.1.0
+Summary: Live2D Assistant Server
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: openai
+Requires-Dist: python-dotenv
+Requires-Dist: fastapi[standard]
+Requires-Dist: uvicorn
+Requires-Dist: pydantic
+Requires-Dist: requests
+Requires-Dist: agentic-agents
